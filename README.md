@@ -6,6 +6,17 @@
 [![Tests](https://img.shields.io/badge/Tests-22%2F22-brightgreen.svg)](#testing)
 [![RFC 9458](https://img.shields.io/badge/RFC-9458-purple.svg)](https://datatracker.ietf.org/doc/rfc9458/)
 
+> **⚠️ EXPERIMENTAL SOFTWARE - NOT AUDITED**
+> 
+> This is experimental software that has not undergone security audits. It is provided for research, development, and educational purposes only. **DO NOT USE IN PRODUCTION** without proper security review and auditing. The cryptographic implementations may contain vulnerabilities, and the privacy guarantees depend on correct implementation and deployment.
+>
+> - 🔬 **Experimental**: Implementation may change significantly
+> - 🚨 **Unaudited**: No formal security review has been conducted  
+> - 🧪 **Research Purpose**: Intended for development and testing
+> - ⚖️ **No Warranty**: Use at your own risk
+>
+> For production use, ensure proper security auditing of all cryptographic components.
+
 A comprehensive TypeScript implementation of **Oblivious HTTP (OHTTP)** for anonymizing blockchain RPC requests, enabling privacy-preserving interactions with Ethereum and other blockchain networks.
 
 ## 🏗️ Architecture Overview
@@ -221,6 +232,39 @@ graph TD
 bun install
 ```
 
+### Easy Deployment
+
+Deploy both gateway and relay servers with one command:
+
+```bash
+# Generate secure keys
+bun run generate-keys
+
+# Deploy with Docker (recommended)
+bun run deploy:docker
+
+# Or deploy natively
+bun run deploy:native
+```
+
+### Manual Setup
+
+For more control over configuration:
+
+```bash
+# Setup gateway
+bun run setup:gateway
+bun run validate:gateway
+
+# Setup relay  
+bun run setup:relay
+bun run validate:relay
+
+# Start services
+cd apps/gateway && bun run start
+cd apps/relay && bun run start
+```
+
 ### Building & Testing
 
 Build and test the working components:
@@ -244,21 +288,6 @@ Run the core functionality tests:
 ```bash
 bun test
 ```
-
-### Development Status
-
-This is an **MVP implementation** demonstrating the OHTTP protocol structure. 
-
-**Working Components:**
-- Core bHTTP message encoding/decoding
-- OHTTP key configuration parsing
-- Mock RPC server for testing
-- Complete TypeScript type definitions
-
-**Production Notes:**
-- The HPKE implementation is simplified for demonstration
-- Server applications need additional work for production deployment
-- For production use, implement proper HPKE cryptography with audited libraries
 
 ## 💡 Usage Examples
 
@@ -321,6 +350,44 @@ const response = await ohttpFetch(
 
 const result = await response.json();
 ```
+
+## 🚀 Deployment
+
+For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+### Quick Commands
+
+```bash
+# Generate secure keys
+bun run generate-keys
+
+# Setup services interactively
+bun run setup:gateway
+bun run setup:relay
+
+# Validate configuration
+bun run validate:gateway
+bun run validate:relay
+
+# Deploy with Docker
+bun run deploy:docker
+
+# Deploy natively
+bun run deploy:native
+```
+
+### Environment Files
+
+- `apps/gateway/env.example` - Gateway configuration template
+- `apps/relay/env.example` - Relay configuration template  
+- `docker.env.example` - Docker Compose environment template
+
+### Deployment Notes
+
+**Docker Limitations:**
+- ⚠️ Docker containers may have WebCrypto limitations on some platforms
+- Native deployment with Bun is recommended for full crypto support
+- If using Docker, test thoroughly on your target platform
 
 ## ⚙️ Configuration
 
@@ -491,6 +558,45 @@ graph LR
 - **Target Allowlisting**: Gateway only forwards to approved RPC endpoints
 - **Header Filtering**: Only allowlisted headers are forwarded to prevent deanonymization
 - **Size Limits**: Configurable limits prevent DoS attacks
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**Gateway fails to start with crypto errors:**
+- Ensure you're using a secure HPKE seed: `bun run generate-keys`
+- Try native deployment instead of Docker
+- Verify WebCrypto support on your platform
+
+**Relay cannot connect to gateway:**
+- Check `GATEWAY_URL` in relay configuration
+- Verify gateway is running and accessible
+- Test connectivity: `curl http://gateway-host:8788/health`
+
+**CORS errors in browser:**
+- Update `ALLOWED_ORIGINS` in relay configuration
+- Ensure origins include protocol (https://)
+- Test preflight: `curl -X OPTIONS -H "Origin: https://yourapp.com" http://relay:8787/relay`
+
+**Configuration validation fails:**
+- Run validation tools: `bun run validate:gateway`, `bun run validate:relay`
+- Check environment variables are properly set
+- Verify file permissions on `.env` files
+
+### Health Endpoints
+
+Monitor service health:
+```bash
+# Gateway health and metrics
+curl http://localhost:8788/health
+curl http://localhost:8788/metrics
+
+# Relay health
+curl http://localhost:8787/health
+
+# OHTTP key configuration
+curl http://localhost:8788/ohttp-keys.json
+```
 
 ## Protocol Standards
 

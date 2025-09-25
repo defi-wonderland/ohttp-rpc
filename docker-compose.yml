@@ -1,0 +1,97 @@
+# OHTTP Infrastructure Docker Compose
+# Complete deployment with gateway and relay
+
+version: '3.8'
+
+services:
+  # OHTTP Gateway
+  gateway:
+    build:
+      context: .
+      dockerfile: ./apps/gateway/Dockerfile
+    container_name: ohttp-gateway
+    restart: unless-stopped
+    ports:
+      - "${GATEWAY_PORT:-8788}:8788"
+    environment:
+      - NODE_ENV=production
+      - GATEWAY_PORT=8788
+      - HPKE_SEED=${GATEWAY_HPKE_SEED}
+      - HPKE_SUITE=${GATEWAY_HPKE_SUITE:-DHKEM_X25519_HKDF_SHA256+HKDF_SHA256+AES_128_GCM}
+      - ALLOWED_TARGETS=${GATEWAY_ALLOWED_TARGETS:-https://mainnet.infura.io,https://eth.llamarpc.com}
+      - ALLOWED_HEADERS=${GATEWAY_ALLOWED_HEADERS:-content-type,accept,authorization}
+      - MAX_INNER_BYTES=${GATEWAY_MAX_INNER_BYTES:-524288}
+      - UPSTREAM_CONNECT_TIMEOUT_MS=${GATEWAY_CONNECT_TIMEOUT:-3000}
+      - UPSTREAM_TOTAL_TIMEOUT_MS=${GATEWAY_TOTAL_TIMEOUT:-15000}
+      - REQUIRE_TLS_UPSTREAM=${GATEWAY_REQUIRE_TLS:-true}
+      - ALLOW_REDIRECTS=${GATEWAY_ALLOW_REDIRECTS:-false}
+      - DATE_SKEW_TOLERANCE_MS=${GATEWAY_DATE_SKEW:-300000}
+      - ENABLE_REPLAY_PROTECTION=${GATEWAY_REPLAY_PROTECTION:-true}
+      - LOG_LEVEL=${GATEWAY_LOG_LEVEL:-info}
+      - LOG_INNER_CONTENT=false
+    volumes:
+      - gateway_logs:/app/logs
+    networks:
+      - ohttp-network
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://localhost:8788/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # OHTTP Relay
+  relay:
+    build:
+      context: .
+      dockerfile: ./apps/relay/Dockerfile
+    container_name: ohttp-relay
+    restart: unless-stopped
+    ports:
+      - "${RELAY_PORT:-8787}:8787"
+    environment:
+      - NODE_ENV=production
+      - RELAY_PORT=8787
+      - GATEWAY_URL=${RELAY_GATEWAY_URL:-http://gateway:8788/gateway}
+      - ALLOWED_ORIGINS=${RELAY_ALLOWED_ORIGINS:-*}
+      - MAX_BODY_BYTES=${RELAY_MAX_BODY_BYTES:-1048576}
+      - CONNECT_TIMEOUT_MS=${RELAY_CONNECT_TIMEOUT:-3000}
+      - TOTAL_TIMEOUT_MS=${RELAY_TOTAL_TIMEOUT:-15000}
+      - RATE_LIMIT_RPM=${RELAY_RATE_LIMIT:-60}
+      - LOG_LEVEL=${RELAY_LOG_LEVEL:-info}
+    volumes:
+      - relay_logs:/app/logs
+    networks:
+      - ohttp-network
+    depends_on:
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://localhost:8787/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+networks:
+  ohttp-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  gateway_logs:
+    driver: local
+  relay_logs:
+    driver: local

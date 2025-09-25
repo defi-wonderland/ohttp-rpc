@@ -4,9 +4,12 @@
   "type": "module",
   "scripts": {
     "dev": "bun --hot src/index.ts",
-    "start": "bun src/index.ts",
+    "start": "NODE_ENV=production bun src/index.ts",
+    "start:dev": "NODE_ENV=development bun src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target bun",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "validate-config": "bun scripts/validate-config.ts",
+    "setup": "bun scripts/setup.ts"
   },
   "dependencies": {
     "@ohttp/shared": "workspace:*",

@@ -41,7 +41,15 @@
     "test:all": "bun test",
     "lint": "bunx eslint .",
     "typecheck": "bunx tsc --noEmit",
-    "clean": "find . -name '*.tsbuildinfo' -delete && find . -name 'node_modules' -type d -prune -exec rm -rf {} +"
+    "clean": "find . -name '*.tsbuildinfo' -delete && find . -name 'node_modules' -type d -prune -exec rm -rf {} +",
+    "deploy": "bun scripts/deploy.ts",
+    "deploy:docker": "bun scripts/deploy.ts --mode docker",
+    "deploy:native": "bun scripts/deploy.ts --mode native",
+    "setup:gateway": "cd apps/gateway && bun run setup",
+    "setup:relay": "cd apps/relay && bun run setup",
+    "validate:gateway": "cd apps/gateway && bun run validate-config",
+    "validate:relay": "cd apps/relay && bun run validate-config",
+    "generate-keys": "bun apps/gateway/scripts/generate-keys.ts"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.14.0",
