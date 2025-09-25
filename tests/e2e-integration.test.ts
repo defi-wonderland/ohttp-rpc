@@ -212,7 +212,7 @@ describe("E2E Integration - Complete OHTTP Flow", () => {
       relayUrl,
       targetRpcUrl,
       timeoutMs: 10000,
-      fetchFn: (url: string, init?: RequestInit) => {
+      fetchFn: ((url: string, init?: RequestInit) => {
         // Add allowHttp to all requests
         if (init && init.body && typeof init.body === 'string') {
           try {
@@ -224,7 +224,7 @@ describe("E2E Integration - Complete OHTTP Flow", () => {
           } catch {}
         }
         return fetch(url, init);
-      }
+      }) as typeof fetch
     });
     
     // Wait for initialization

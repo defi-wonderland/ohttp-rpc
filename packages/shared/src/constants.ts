@@ -93,9 +93,9 @@ export const HTTP_STATUS = {
 } as const;
 
 /**
- * OHTTP problem type URIs (RFC 9458)
+ * OHTTP problem type URIs (RFC 9458 Section 9.4-9.5)
  */
 export const OHTTP_PROBLEM_TYPES = {
-  OHTTP_KEY: "urn:ietf:params:ohttp:error:ohttp-key",
-  UNSUPPORTED_CONFIG: "urn:ietf:params:ohttp:error:unsupported-config", 
+  OHTTP_KEY: "https://iana.org/assignments/http-problem-types#ohttp-key",
+  DATE_NOT_ACCEPTABLE: "https://iana.org/assignments/http-problem-types#date",
 } as const;

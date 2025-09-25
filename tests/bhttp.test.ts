@@ -88,6 +88,6 @@ test("bHTTP with padding", () => {
   // Original data should be at the beginning
   if (decoded.body && request.body) {
     const originalData = decoded.body.slice(0, request.body.length);
-    expect(originalData).toEqual(request.body);
+          expect(originalData).toEqual(new Uint8Array(request.body!));
   }
 });

@@ -116,6 +116,10 @@ function parseKeyConfig(configBytes: Uint8Array): OhttpKeyConfig {
   let offset = 0;
   
   // Key Identifier (8 bits) - RFC 9458 Section 3.1
+  // Note: RFC 9458 specifies Key ID is exactly 1 byte (8 bits)
+  if (offset + 1 > configBytes.length) {
+    throw new Error("Key config truncated at Key ID");
+  }
   const keyId = new Uint8Array([configBytes[offset]]);
   offset += 1;
   

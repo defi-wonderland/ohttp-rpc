@@ -404,7 +404,7 @@ describe("Security - Protocol Security", () => {
     // Data should be preserved
     expect(decoded.method).toBe(originalRequest.method);
     expect(decoded.url).toBe(originalRequest.url + "/"); // bHTTP adds trailing slash
-    expect(decoded.headers["content-type"]).toBe(originalRequest.headers["content-type"]);
+    expect(decoded.headers?.["content-type"]).toBe(originalRequest.headers["content-type"]);
     expect(new TextDecoder().decode(decoded.body)).toBe(new TextDecoder().decode(originalRequest.body));
   });
 

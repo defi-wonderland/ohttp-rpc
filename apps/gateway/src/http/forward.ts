@@ -138,12 +138,12 @@ function extractResponseHeaders(response: Response): Record<string, string> {
     "access-control-allow-headers",
   ];
   
-  for (const [name, value] of response.headers) {
+  response.headers.forEach((value, name) => {
     const lowerName = name.toLowerCase();
     if (allowedHeaders.includes(lowerName)) {
       headers[lowerName] = value;
     }
-  }
+  });
   
   return headers;
 }

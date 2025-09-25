@@ -35,6 +35,10 @@ const envSchema = z.object({
   REQUIRE_TLS_UPSTREAM: z.coerce.boolean().default(true),
   ALLOW_REDIRECTS: z.coerce.boolean().default(false),
   
+  // Anti-replay protection (RFC 9458 Section 6.5.1)
+  DATE_SKEW_TOLERANCE_MS: z.coerce.number().default(300000), // 5 minutes
+  ENABLE_REPLAY_PROTECTION: z.coerce.boolean().default(true),
+  
   // Logging configuration
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
   LOG_INNER_CONTENT: z.coerce.boolean().default(false), // NEVER enable in production
@@ -77,6 +81,8 @@ export function getDevConfig(): GatewayConfig {
     UPSTREAM_TOTAL_TIMEOUT_MS: 15000,
     REQUIRE_TLS_UPSTREAM: false, // Allow HTTP for local testing
     ALLOW_REDIRECTS: false,
+    DATE_SKEW_TOLERANCE_MS: 300000, // 5 minutes
+    ENABLE_REPLAY_PROTECTION: true,
     LOG_LEVEL: "debug",
     LOG_INNER_CONTENT: false, // Keep false even in dev for privacy
   };

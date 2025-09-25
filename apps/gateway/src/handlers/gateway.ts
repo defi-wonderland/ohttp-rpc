@@ -2,8 +2,8 @@
  * OHTTP Gateway endpoint handler
  */
 
-import { CT_OHTTP_REQ, CT_OHTTP_RES } from "@ohttp/shared";
-import { assertContentType, unwrapEncapsulatedRequest } from "@ohttp/core";
+import { CT_OHTTP_REQ, CT_OHTTP_RES, OHTTP_PROBLEM_TYPES } from "@ohttp/shared";
+import { assertContentType, unwrapEncapsulatedRequest, createProblemResponse } from "@ohttp/core";
 import type { GatewayConfig } from "../env.js";
 import type { GatewayHpkeManager } from "../crypto/hpke.js";
 import { validateInnerRequest, filterHeaders } from "../policy/allowlist.js";
@@ -18,34 +18,133 @@ import { forwardToUpstream, createUpstreamErrorResponse } from "../http/forward.
 
 /**
  * Extract ephemeral key from OHTTP encapsulated request
- * Format: [key_id_len][key_id][enc][ciphertext]
+ * RFC 9458 Section 4.1 format: [Key Identifier (8)][HPKE KEM ID (16)][HPKE KDF ID (16)][HPKE AEAD ID (16)][Encapsulated KEM Shared Secret (Nenc)][HPKE-Protected Request]
  */
 function extractEphemeralKey(encapsulatedRequest: Uint8Array): Uint8Array {
   try {
-    // Parse OHTTP request format per RFC 9458 Section 4.1:
-    // [Key Identifier (8)][HPKE KEM ID (16)][HPKE KDF ID (16)][HPKE AEAD ID (16)][enc][ciphertext]
-    
+    // RFC 9458 Section 4.1: Encapsulated Request format
     if (encapsulatedRequest.length < 7 + 32) { // 7 bytes header + 32 bytes enc minimum
       throw new Error("Invalid OHTTP request: too short for RFC 9458 format");
     }
     
-    // Skip the header: 1 byte key_id + 2 bytes kem_id + 2 bytes kdf_id + 2 bytes aead_id = 7 bytes
-    const headerSize = 7;
+    let offset = 0;
     
-    // Extract enc (ephemeral public key) - 32 bytes for X25519
-    return encapsulatedRequest.slice(headerSize, headerSize + 32);
+    // Key Identifier (8 bits) - RFC 9458 Section 3.1
+    offset += 1;
+    
+    // HPKE KEM ID (16 bits)
+    const kemId = (encapsulatedRequest[offset] << 8) | encapsulatedRequest[offset + 1];
+    offset += 2;
+    
+    // HPKE KDF ID (16 bits) 
+    offset += 2;
+    
+    // HPKE AEAD ID (16 bits)
+    offset += 2;
+    
+    // Encapsulated KEM Shared Secret (Nenc bytes)
+    // For DHKEM_X25519_HKDF_SHA256, Nenc = 32 bytes
+    const Nenc = kemId === 0x0020 ? 32 : 32; // X25519 uses 32-byte public keys
+    
+    if (offset + Nenc > encapsulatedRequest.length) {
+      throw new Error("Invalid OHTTP request: truncated at encapsulated key");
+    }
+    
+    // Extract enc (ephemeral public key)
+    return encapsulatedRequest.slice(offset, offset + Nenc);
     
   } catch (error) {
-    // Fallback: generate deterministic ephemeral key from request hash
-    console.warn("Failed to extract ephemeral key, using fallback:", error);
-    const fallbackKey = new Uint8Array(32);
-    for (let i = 0; i < 32; i++) {
-      fallbackKey[i] = encapsulatedRequest[i % encapsulatedRequest.length] ^ (i + 1);
-    }
-    return fallbackKey;
+    console.error("Failed to extract ephemeral key from OHTTP request:", error);
+    throw new Error(`Invalid OHTTP request format: ${error}`);
   }
 }
 import { zeroizeBytes } from "../crypto/zeroize.js";
+
+/**
+ * Validate Date header for anti-replay protection (RFC 9458 Section 6.5.1)
+ */
+function validateDateHeader(headers: Record<string, string>, config: GatewayConfig): {
+  valid: boolean;
+  error?: string;
+  correctedDate?: string;
+} {
+  const dateHeader = headers['date'];
+  
+  if (!dateHeader) {
+    // RFC 9458 Section 6.5.1: Clients SHOULD include Date header
+    // For now, we allow requests without Date header but warn
+    console.warn("Request missing Date header - anti-replay protection disabled");
+    return { valid: true };
+  }
+  
+  try {
+    const requestTime = new Date(dateHeader).getTime();
+    const now = Date.now();
+    
+    // Allow 5 minutes of clock skew by default
+    const skewToleranceMs = config.DATE_SKEW_TOLERANCE_MS || 300000; // 5 minutes
+    const timeDiff = Math.abs(now - requestTime);
+    
+    if (timeDiff > skewToleranceMs) {
+      // RFC 9458 Section 6.5.2: Provide corrected date
+      const correctedDate = new Date(now).toUTCString();
+      
+      return {
+        valid: false,
+        error: `Date field in request outside of acceptable range. Time difference: ${timeDiff}ms`,
+        correctedDate
+      };
+    }
+    
+    return { valid: true };
+    
+  } catch (error) {
+    return {
+      valid: false,
+      error: `Invalid Date header format: ${dateHeader}`
+    };
+  }
+}
+
+/**
+ * Create problem+json response for date validation errors (RFC 9458 Section 6.5.2)
+ */
+async function createDateErrorResponse(
+  error: string,
+  correctedDate: string,
+  hpkeManager: GatewayHpkeManager
+): Promise<Response> {
+  const { headers, body } = createProblemResponse(
+    OHTTP_PROBLEM_TYPES.DATE_NOT_ACCEPTABLE,
+    "Date Not Acceptable",
+    400,
+    error,
+    undefined
+  );
+  
+  // Add corrected date header
+  headers.set("date", correctedDate);
+  
+  // Encode as bHTTP response
+  const headersObj: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    headersObj[key] = value;
+  });
+  
+  const bhttpResponse = createBhttpResponse(400, headersObj, body);
+  
+  // Encrypt the response
+  const encapsulatedResponse = await hpkeManager.encryptResponse(bhttpResponse);
+  
+  return new Response(encapsulatedResponse as BodyInit, {
+    status: 200,
+    headers: {
+      "content-type": CT_OHTTP_RES,
+      "content-length": encapsulatedResponse.length.toString(),
+      "date": correctedDate,
+    },
+  });
+}
 
 /**
  * Handle POST /gateway request
@@ -68,7 +167,7 @@ export async function handleGateway(
     // Validate request size
     if (encapsulatedRequest.length > config.MAX_INNER_BYTES * 2) {
       // Allow some overhead for encryption
-      return createEncapsulatedErrorResponse(413, "Request too large");
+      return await createEncapsulatedErrorResponse(413, "Request too large");
     }
     
     // Unwrap encapsulated request
@@ -80,22 +179,32 @@ export async function handleGateway(
     // Validate bHTTP format
     const bhttpValidation = validateBhttpRequest(decryptedRequest);
     if (!bhttpValidation.valid) {
-      return createEncapsulatedErrorResponse(400, bhttpValidation.error || "Invalid bHTTP format");
+      return await createEncapsulatedErrorResponse(400, bhttpValidation.error || "Invalid bHTTP format", hpkeManager);
     }
     
     // Process bHTTP request
     const { method, url, headers, body } = processBhttpRequest(decryptedRequest);
     
+    // Validate Date header for anti-replay protection (RFC 9458 Section 6.5.1)
+    const dateValidation = validateDateHeader(headers, config);
+    if (!dateValidation.valid && dateValidation.correctedDate) {
+      return await createDateErrorResponse(
+        dateValidation.error || "Date not acceptable",
+        dateValidation.correctedDate,
+        hpkeManager
+      );
+    }
+    
     // Validate request against policy
     const policyValidation = validateInnerRequest(url, headers, body.length, config);
     if (!policyValidation.allowed) {
-      return createEncapsulatedErrorResponse(403, policyValidation.reason || "Request not allowed");
+      return await createEncapsulatedErrorResponse(403, policyValidation.reason || "Request not allowed", hpkeManager);
     }
     
     // Validate request size constraints
     const sizeValidation = validateRequestSize(url, headers, body.length, config);
     if (!sizeValidation.valid) {
-      return createEncapsulatedErrorResponse(413, sizeValidation.reason || "Request too large");
+      return await createEncapsulatedErrorResponse(413, sizeValidation.reason || "Request too large", hpkeManager);
     }
     
     // Filter headers to allowlist
@@ -149,7 +258,7 @@ export async function handleGateway(
       }
     }
     
-    return createEncapsulatedErrorResponse(status, message);
+    return await createEncapsulatedErrorResponse(status, message, hpkeManager);
     
   } finally {
     // Zeroize sensitive data
@@ -164,20 +273,39 @@ export async function handleGateway(
 
 /**
  * Create encapsulated error response
+ * RFC 9458 Section 5.2: ALL responses from gateway must be encapsulated
  */
-function createEncapsulatedErrorResponse(
+async function createEncapsulatedErrorResponse(
   status: number,
-  message: string
-): Response {
+  message: string,
+  hpkeManager?: GatewayHpkeManager
+): Promise<Response> {
   try {
     // Create bHTTP error response
     const bhttpError = createBhttpErrorResponse(status, message);
     
-    // For errors, we return the bHTTP response directly without encryption
-    // In a full implementation, this would also be encrypted
+    // RFC 9458 Section 5.2: All gateway responses must be encapsulated
+    if (hpkeManager) {
+      try {
+        const encapsulatedResponse = await hpkeManager.encryptResponse(bhttpError);
+        return new Response(encapsulatedResponse as BodyInit, {
+          status: 200, // Always return 200 for OHTTP responses
+          headers: {
+            "content-type": CT_OHTTP_RES,
+            "content-length": encapsulatedResponse.length.toString(),
+          },
+        });
+      } catch (encryptError) {
+        console.error("Failed to encrypt error response:", encryptError);
+        // If encryption fails, we cannot return an encapsulated response
+        // This is a protocol violation, but necessary for debugging
+      }
+    }
     
-      return new Response(bhttpError as BodyInit, {
-      status: 200, // Always return 200 for OHTTP responses
+    // Fallback: unencrypted bHTTP response (protocol violation)
+    // This should only happen during decryption failures
+    return new Response(bhttpError as BodyInit, {
+      status: 200,
       headers: {
         "content-type": CT_OHTTP_RES,
         "content-length": bhttpError.length.toString(),
@@ -187,7 +315,7 @@ function createEncapsulatedErrorResponse(
   } catch (error) {
     console.error("Failed to create encapsulated error response:", error);
     
-    // Fallback to plain HTTP error
+    // Last resort: plain HTTP error (major protocol violation)
     return new Response(message, {
       status,
       headers: {

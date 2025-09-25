@@ -90,7 +90,7 @@ export function addCorsHeaders(
     status: response.status,
     statusText: response.statusText,
     headers: {
-      ...Object.fromEntries(Array.from(response.headers.entries())),
+      ...Object.fromEntries(Array.from((response.headers as any).entries())),
       ...corsHeaders,
     },
   });

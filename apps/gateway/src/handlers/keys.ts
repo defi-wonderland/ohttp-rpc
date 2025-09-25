@@ -120,7 +120,7 @@ export async function handleConditionalOhttpKeys(
  */
 async function generateETag(keysDocument: Uint8Array): Promise<string> {
   // Create hash of the keys document for ETag
-  const hashBuffer = await crypto.subtle.digest("SHA-256", keysDocument);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", keysDocument as BufferSource);
   const hashArray = new Uint8Array(hashBuffer);
   
   // Convert to hex string

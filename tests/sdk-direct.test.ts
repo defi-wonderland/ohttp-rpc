@@ -76,7 +76,7 @@ test("Key configuration loading with mock response", async () => {
   // Mock fetch function
   const mockFetch = async (url: string) => {
     expect(url).toBe("https://example.com/ohttp-keys");
-    return new Response(keysDocument, {
+    return new Response(keysDocument as BodyInit, {
       status: 200,
       headers: {
         "content-type": "application/ohttp-keys",

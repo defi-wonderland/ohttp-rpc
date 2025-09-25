@@ -68,7 +68,7 @@ test("bHTTP Integration - Request/Response Encoding", async () => {
   const decodedRequest = decodeBhttp(bhttpRequest);
   expect(decodedRequest.method).toBe("POST");
   expect(decodedRequest.url).toBe("https://eth.llamarpc.com/"); // bHTTP adds trailing slash
-  expect(decodedRequest.headers["content-type"]).toBe("application/json");
+      expect(decodedRequest.headers?.["content-type"]).toBe("application/json");
   
   const decodedBody = JSON.parse(new TextDecoder().decode(decodedRequest.body));
   expect(decodedBody.method).toBe("eth_getBalance");
