@@ -6,13 +6,13 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { ohttpJsonRpc } from "../packages/sdk/src/fetch.js";
+import { ohttpJsonRpc } from "../../packages/sdk/src/fetch.js";
 
 // Import server components
-import { createServer as createRelayServer } from "../apps/relay/src/index.js";
-import { createServer as createGatewayServer } from "../apps/gateway/src/index.js";
-import { getDevConfig as getRelayConfig } from "../apps/relay/src/env.js";
-import { getDevConfig as getGatewayConfig } from "../apps/gateway/src/env.js";
+import { createServer as createRelayServer } from "../../apps/relay/src/index.js";
+import { createServer as createGatewayServer } from "../../apps/gateway/src/index.js";
+import { getDevConfig as getRelayConfig } from "../../apps/relay/src/env.js";
+import { getDevConfig as getGatewayConfig } from "../../apps/gateway/src/env.js";
 
 interface TestServers {
   gateway: any;

@@ -6,17 +6,17 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { createHpkeEngine } from "../packages/hpke-engine/src/index.js";
-import { OhttpClient } from "../packages/sdk/src/client.js";
-import { ohttpFetch, ohttpJsonRpc } from "../packages/sdk/src/fetch.js";
-import { OhttpRpcProvider } from "../packages/sdk/src/provider.js";
-import { MockRpcServer } from "../packages/test-utils/src/mock-rpc.js";
+import { createHpkeEngine } from "../../packages/hpke-engine/src/index.js";
+import { OhttpClient } from "../../packages/sdk/src/client.js";
+import { ohttpFetch, ohttpJsonRpc } from "../../packages/sdk/src/fetch.js";
+import { OhttpRpcProvider } from "../../packages/sdk/src/provider.js";
+import { MockRpcServer } from "../../packages/test-utils/src/mock-rpc.js";
 
 // Import server components
-import { createServer as createRelayServer } from "../apps/relay/src/index.js";
-import { createServer as createGatewayServer } from "../apps/gateway/src/index.js";
-import { getDevConfig as getRelayConfig } from "../apps/relay/src/env.js";
-import { getDevConfig as getGatewayConfig } from "../apps/gateway/src/env.js";
+import { createServer as createRelayServer } from "../../apps/relay/src/index.js";
+import { createServer as createGatewayServer } from "../../apps/gateway/src/index.js";
+import { getDevConfig as getRelayConfig } from "../../apps/relay/src/env.js";
+import { getDevConfig as getGatewayConfig } from "../../apps/gateway/src/env.js";
 
 interface TestServers {
   mockRpc: MockRpcServer;

@@ -7,10 +7,10 @@ import {
   ConfigError, 
   CryptoError, 
   RelayNetworkError,
-} from "../packages/sdk/src/errors.js";
-import { loadKeyConfigFromUrl, parseKeyConfigFromBytes } from "../packages/sdk/src/keys.js";
-import { encodeOhttpKeys } from "../packages/ohttp-core/src/ohttp.js";
-import { createHpkeEngine } from "../packages/hpke-engine/src/index.js";
+} from "../../../packages/sdk/src/errors.js";
+import { loadKeyConfigFromUrl, parseKeyConfigFromBytes } from "../../../packages/sdk/src/keys.js";
+import { encodeOhttpKeys } from "../../../packages/ohttp-core/src/ohttp.js";
+import { createHpkeEngine } from "../../../packages/hpke-engine/src/index.js";
 
 test("Error types", () => {
   const configError = new ConfigError("Test config error");

@@ -10,13 +10,13 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { createHpkeEngine } from "../packages/hpke-engine/src/index.js";
-import { OhttpClient } from "../packages/sdk/src/client.js";
-import { ohttpFetch, ohttpJsonRpc } from "../packages/sdk/src/fetch.js";
-import { MockRpcServer } from "../packages/test-utils/src/mock-rpc.js";
-import { encodeOhttpKeys } from "../packages/ohttp-core/src/ohttp.js";
-import { getDevConfig as getGatewayConfig } from "../apps/gateway/src/env.js";
-import { getDevConfig as getRelayConfig } from "../apps/relay/src/env.js";
+import { createHpkeEngine } from "../../packages/hpke-engine/src/index.js";
+import { OhttpClient } from "../../packages/sdk/src/client.js";
+import { ohttpFetch, ohttpJsonRpc } from "../../packages/sdk/src/fetch.js";
+import { MockRpcServer } from "../../packages/test-utils/src/mock-rpc.js";
+import { encodeOhttpKeys } from "../../packages/ohttp-core/src/ohttp.js";
+import { getDevConfig as getGatewayConfig } from "../../apps/gateway/src/env.js";
+import { getDevConfig as getRelayConfig } from "../../apps/relay/src/env.js";
 import type { OhttpKeyConfig } from "@ohttp/shared";
 
 // Test infrastructure for failure scenarios

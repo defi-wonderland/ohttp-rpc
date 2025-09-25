@@ -9,10 +9,10 @@
  */
 
 import { test, expect, describe } from "bun:test";
-import { encodeRequest as encodeBhttp, decodeRequest as decodeBhttp } from "../packages/ohttp-core/src/bhttp.js";
-import { encodeOhttpKeys } from "../packages/ohttp-core/src/ohttp.js";
-import { createHpkeEngine } from "../packages/hpke-engine/src/index.js";
-import { MockRpcServer } from "../packages/test-utils/src/mock-rpc.js";
+import { encodeRequest as encodeBhttp, decodeRequest as decodeBhttp } from "../../packages/ohttp-core/src/bhttp.js";
+import { encodeOhttpKeys } from "../../packages/ohttp-core/src/ohttp.js";
+import { createHpkeEngine } from "../../packages/hpke-engine/src/index.js";
+import { MockRpcServer } from "../../packages/test-utils/src/mock-rpc.js";
 import type { OhttpKeyConfig } from "@ohttp/shared";
 
 // Performance test utilities

@@ -10,11 +10,11 @@
  */
 
 import { test, expect, describe, beforeEach, afterEach } from "bun:test";
-import { createHpkeEngine, WebCryptoHpkeEngine } from "../packages/hpke-engine/src/index.js";
-import { GatewayHpkeManager } from "../apps/gateway/src/crypto/hpke.js";
-import { zeroizeBytes, deriveKeyMaterial, generateSecureRandom } from "../apps/gateway/src/crypto/zeroize.js";
-import { encodeOhttpKeys, parseOhttpKeys, createTestKeyConfig } from "../packages/ohttp-core/src/ohttp.js";
-import { validateHpkeSeed } from "../apps/gateway/src/env.js";
+import { createHpkeEngine, WebCryptoHpkeEngine } from "../../packages/hpke-engine/src/index.js";
+import { GatewayHpkeManager } from "../../apps/gateway/src/crypto/hpke.js";
+import { zeroizeBytes, deriveKeyMaterial, generateSecureRandom } from "../../apps/gateway/src/crypto/zeroize.js";
+import { encodeOhttpKeys, parseOhttpKeys, createTestKeyConfig } from "../../packages/ohttp-core/src/ohttp.js";
+import { validateHpkeSeed } from "../../apps/gateway/src/env.js";
 import type { OhttpKeyConfig } from "@ohttp/shared";
 
 describe("Crypto - HPKE Engine Edge Cases", () => {

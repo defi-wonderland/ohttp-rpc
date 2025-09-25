@@ -6,13 +6,13 @@
  */
 
 import { test, expect } from "bun:test";
-import { OhttpClient } from "../packages/sdk/src/client.js";
-import { ohttpFetch } from "../packages/sdk/src/fetch.js";
-import { MockRpcServer } from "../packages/test-utils/src/mock-rpc.js";
-import { createHpkeEngine } from "../packages/hpke-engine/src/index.js";
-import { encodeOhttpKeys } from "../packages/ohttp-core/src/ohttp.js";
-import { encodeRequest as encodeBhttp, decodeRequest as decodeBhttp } from "../packages/ohttp-core/src/bhttp.js";
-import type { OhttpKeyConfig } from "../packages/shared/src/types.js";
+import { OhttpClient } from "../../packages/sdk/src/client.js";
+import { ohttpFetch } from "../../packages/sdk/src/fetch.js";
+import { MockRpcServer } from "../../packages/test-utils/src/mock-rpc.js";
+import { createHpkeEngine } from "../../packages/hpke-engine/src/index.js";
+import { encodeOhttpKeys } from "../../packages/ohttp-core/src/ohttp.js";
+import { encodeRequest as encodeBhttp, decodeRequest as decodeBhttp } from "../../packages/ohttp-core/src/bhttp.js";
+import type { OhttpKeyConfig } from "../../packages/shared/src/types.js";
 
 test("SDK Integration - Key Configuration Loading", async () => {
   console.log("🔑 Testing SDK key configuration loading...");

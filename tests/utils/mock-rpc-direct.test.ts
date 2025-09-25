@@ -3,7 +3,7 @@
  */
 
 import { test, expect } from "bun:test";
-import { MockRpcServer } from "../packages/test-utils/src/mock-rpc.js";
+import { MockRpcServer } from "../../packages/test-utils/src/mock-rpc.js";
 
 test("Mock RPC server creation", () => {
   const server = new MockRpcServer(3333);

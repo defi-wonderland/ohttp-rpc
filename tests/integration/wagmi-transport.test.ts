@@ -8,13 +8,13 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import { createPublicClient } from "viem";
 import { mainnet, polygon } from "viem/chains";
-import { ohttp, ohttpMultichain, ohttpConfig } from "../packages/sdk/src/wagmi.js";
+import { ohttp, ohttpMultichain, ohttpConfig } from "../../packages/sdk/src/wagmi.js";
 
 // Import server components
-import { createServer as createRelayServer } from "../apps/relay/src/index.js";
-import { createServer as createGatewayServer } from "../apps/gateway/src/index.js";
-import { getDevConfig as getRelayConfig } from "../apps/relay/src/env.js";
-import { getDevConfig as getGatewayConfig } from "../apps/gateway/src/env.js";
+import { createServer as createRelayServer } from "../../apps/relay/src/index.js";
+import { createServer as createGatewayServer } from "../../apps/gateway/src/index.js";
+import { getDevConfig as getRelayConfig } from "../../apps/relay/src/env.js";
+import { getDevConfig as getGatewayConfig } from "../../apps/gateway/src/env.js";
 
 interface TestServers {
   gateway: any;

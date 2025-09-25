@@ -10,13 +10,13 @@
  */
 
 import { test, expect, describe } from "bun:test";
-import { getDevConfig as getGatewayConfig } from "../apps/gateway/src/env.js";
-import { getDevConfig as getRelayConfig } from "../apps/relay/src/env.js";
-import { isTargetAllowed, validateInnerRequest } from "../apps/gateway/src/policy/allowlist.js";
-import { validateRequestSize } from "../apps/gateway/src/policy/size.js";
-import { isOriginAllowed } from "../apps/relay/src/cors.js";
-import { encodeRequest as encodeBhttp, decodeRequest as decodeBhttp } from "../packages/ohttp-core/src/bhttp.js";
-import { createHpkeEngine } from "../packages/hpke-engine/src/index.js";
+import { getDevConfig as getGatewayConfig } from "../../apps/gateway/src/env.js";
+import { getDevConfig as getRelayConfig } from "../../apps/relay/src/env.js";
+import { isTargetAllowed, validateInnerRequest } from "../../apps/gateway/src/policy/allowlist.js";
+import { validateRequestSize } from "../../apps/gateway/src/policy/size.js";
+import { isOriginAllowed } from "../../apps/relay/src/cors.js";
+import { encodeRequest as encodeBhttp, decodeRequest as decodeBhttp } from "../../packages/ohttp-core/src/bhttp.js";
+import { createHpkeEngine } from "../../packages/hpke-engine/src/index.js";
 
 describe("Security - Advanced Attack Scenarios", () => {
   const gatewayConfig = getGatewayConfig();

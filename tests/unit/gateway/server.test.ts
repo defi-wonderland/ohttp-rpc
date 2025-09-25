@@ -9,11 +9,11 @@
  */
 
 import { test, expect, describe, beforeEach } from "bun:test";
-import { getDevConfig, validateHpkeSeed } from "../apps/gateway/src/env.js";
-import { isTargetAllowed } from "../apps/gateway/src/policy/allowlist.js";
-import { validateRequestSize } from "../apps/gateway/src/policy/size.js";
-import { createHpkeEngine } from "../packages/hpke-engine/src/index.js";
-import { encodeOhttpKeys } from "../packages/ohttp-core/src/ohttp.js";
+import { getDevConfig, validateHpkeSeed } from "../../../apps/gateway/src/env.js";
+import { isTargetAllowed } from "../../../apps/gateway/src/policy/allowlist.js";
+import { validateRequestSize } from "../../../apps/gateway/src/policy/size.js";
+import { createHpkeEngine } from "../../../packages/hpke-engine/src/index.js";
+import { encodeOhttpKeys } from "../../../packages/ohttp-core/src/ohttp.js";
 import type { OhttpKeyConfig } from "@ohttp/shared";
 
 describe("Gateway Server - Configuration", () => {

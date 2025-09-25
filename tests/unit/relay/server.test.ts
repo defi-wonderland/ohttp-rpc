@@ -9,8 +9,8 @@
  */
 
 import { test, expect, describe, beforeEach } from "bun:test";
-import { getDevConfig } from "../apps/relay/src/env.js";
-import { handlePreflight, addCorsHeaders, isOriginAllowed } from "../apps/relay/src/cors.js";
+import { getDevConfig } from "../../../apps/relay/src/env.js";
+import { handlePreflight, addCorsHeaders, isOriginAllowed } from "../../../apps/relay/src/cors.js";
 import { CT_OHTTP_REQ } from "@ohttp/shared";
 
 // Mock fetch for testing relay forwarding

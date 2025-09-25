@@ -11,20 +11,20 @@ import {
   encodeOhttpKeys, 
   createTestKeyConfig,
   selectSupportedConfig 
-} from "../packages/ohttp-core/src/ohttp.js";
+} from "../../packages/ohttp-core/src/ohttp.js";
 import { 
   encodeRequest as encodeBhttp, 
   decodeRequest as decodeBhttp,
   encodeResponse as encodeBhttpResponse,
   decodeResponse as decodeBhttpResponse 
-} from "../packages/ohttp-core/src/bhttp.js";
+} from "../../packages/ohttp-core/src/bhttp.js";
 import { 
   assertContentType,
   createProblemResponse,
   MediaTypes 
-} from "../packages/ohttp-core/src/media.js";
-import { OHTTP_PROBLEM_TYPES, HPKE_SUITE_IDS } from "../packages/shared/src/constants.js";
-import type { OhttpKeyConfig, InnerRequest, InnerResponse } from "../packages/shared/src/types.js";
+} from "../../packages/ohttp-core/src/media.js";
+import { OHTTP_PROBLEM_TYPES, HPKE_SUITE_IDS } from "../../packages/shared/src/constants.js";
+import type { OhttpKeyConfig, InnerRequest, InnerResponse } from "../../packages/shared/src/types.js";
 
 describe("RFC 9458 Compliance - Media Types", () => {
   test("Section 9.1: application/ohttp-keys media type", () => {

@@ -9,10 +9,10 @@
  */
 
 import { test, expect, describe, beforeEach } from "bun:test";
-import { ohttpFetch } from "../packages/sdk/src/fetch.js";
-import { MockRpcServer } from "../packages/test-utils/src/mock-rpc.js";
-import { createHpkeEngine } from "../packages/hpke-engine/src/index.js";
-import { encodeOhttpKeys } from "../packages/ohttp-core/src/ohttp.js";
+import { ohttpFetch } from "../../../packages/sdk/src/fetch.js";
+import { MockRpcServer } from "../../../packages/test-utils/src/mock-rpc.js";
+import { createHpkeEngine } from "../../../packages/hpke-engine/src/index.js";
+import { encodeOhttpKeys } from "../../../packages/ohttp-core/src/ohttp.js";
 import type { OhttpKeyConfig } from "@ohttp/shared";
 
 // Mock key configuration for testing

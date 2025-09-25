@@ -10,12 +10,12 @@
  */
 
 import { test, expect, describe, beforeEach, afterEach } from "bun:test";
-import { encodeRequest as encodeBhttp, decodeRequest as decodeBhttp } from "../packages/ohttp-core/src/bhttp.js";
-import { encodeOhttpKeys, parseOhttpKeys } from "../packages/ohttp-core/src/ohttp.js";
-import { createHpkeEngine } from "../packages/hpke-engine/src/index.js";
-import { ohttpJsonRpc } from "../packages/sdk/src/fetch.js";
-import { MockRpcServer } from "../packages/test-utils/src/mock-rpc.js";
-import { getMetrics, resetMetrics } from "../apps/relay/src/metrics.js";
+import { encodeRequest as encodeBhttp, decodeRequest as decodeBhttp } from "../../packages/ohttp-core/src/bhttp.js";
+import { encodeOhttpKeys, parseOhttpKeys } from "../../packages/ohttp-core/src/ohttp.js";
+import { createHpkeEngine } from "../../packages/hpke-engine/src/index.js";
+import { ohttpJsonRpc } from "../../packages/sdk/src/fetch.js";
+import { MockRpcServer } from "../../packages/test-utils/src/mock-rpc.js";
+import { getMetrics, resetMetrics } from "../../apps/relay/src/metrics.js";
 import type { OhttpKeyConfig } from "@ohttp/shared";
 
 // Performance monitoring utilities

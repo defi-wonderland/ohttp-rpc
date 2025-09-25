@@ -16,9 +16,9 @@ import {
   BenchmarkUtils,
   TestEnvironment
 } from "./test-utilities.js";
-import { encodeOhttpKeys, parseOhttpKeys } from "../packages/ohttp-core/src/ohttp.js";
-import { encodeRequest as encodeBhttp, decodeRequest as decodeBhttp } from "../packages/ohttp-core/src/bhttp.js";
-import { createHpkeEngine } from "../packages/hpke-engine/src/index.js";
+import { encodeOhttpKeys, parseOhttpKeys } from "../../packages/ohttp-core/src/ohttp.js";
+import { encodeRequest as encodeBhttp, decodeRequest as decodeBhttp } from "../../packages/ohttp-core/src/bhttp.js";
+import { createHpkeEngine } from "../../packages/hpke-engine/src/index.js";
 
 describe("Testing Campaign Showcase", () => {
   let cleanup: () => void;
