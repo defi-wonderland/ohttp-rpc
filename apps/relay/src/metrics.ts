@@ -4,6 +4,10 @@
  * Tracks only coarse metrics without logging request bodies or user identifiers
  */
 
+import { createLogger } from "@ohttp/shared";
+
+const logger = createLogger('relay-metrics');
+
 /**
  * Request metrics counter
  */
@@ -141,7 +145,7 @@ export function logMetricsSummary(): void {
     ? ((successfulRequests / totalRequests) * 100).toFixed(1)
     : "0.0";
   
-  console.log(`[METRICS] Requests: ${totalRequests} (${successRate}% success), ` +
+  logger.info(`[METRICS] Requests: ${totalRequests} (${successRate}% success), ` +
              `Avg latency: ${averageLatencyMs.toFixed(1)}ms, ` +
              `Rate limits: ${rateLimitHits}`);
 }

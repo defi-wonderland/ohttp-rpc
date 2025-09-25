@@ -506,6 +506,91 @@ UPSTREAM_CONNECT_TIMEOUT_MS=3000
 UPSTREAM_TOTAL_TIMEOUT_MS=15000
 ```
 
+## 📝 Logging Configuration
+
+The OHTTP-RPC system includes a comprehensive logging system with separate controls for production and test environments.
+
+### Production Logging
+
+Control production logging with these environment variables:
+
+```bash
+# Log levels: error, warn, info, debug, trace
+LOG_LEVEL=info
+
+# Output format: text (default) or json
+LOG_FORMAT=text
+
+# Enable/disable timestamps (default: true)
+LOG_TIMESTAMP=true
+
+# Enable/disable context information (default: true)
+LOG_CONTEXT=true
+```
+
+**Examples:**
+```bash
+# Production with minimal logging
+LOG_LEVEL=error LOG_FORMAT=json bun run dev:gateway
+
+# Development with verbose logging
+LOG_LEVEL=debug bun run dev:gateway
+
+# JSON format for log aggregation
+LOG_LEVEL=info LOG_FORMAT=json bun run start
+```
+
+### Test Logging
+
+Tests run **completely silently by default** (no log output). Use `TEST_LOG_LEVEL` to control test logging:
+
+```bash
+# Test log levels: silent (default), error, warn, info, debug
+TEST_LOG_LEVEL=silent    # No output (default)
+TEST_LOG_LEVEL=error     # Only errors
+TEST_LOG_LEVEL=warn      # Warnings and errors
+TEST_LOG_LEVEL=info      # Info, warnings, and errors  
+TEST_LOG_LEVEL=debug     # All output including debug
+```
+
+**Test Scripts:**
+```bash
+# Silent tests (default - only pass/fail)
+bun test
+bun run test:silent
+
+# Tests with info logging
+bun run test:verbose
+
+# Tests with debug logging
+bun run test:debug
+
+# Integration tests with logging
+bun run test:integration:verbose
+```
+
+### Separate Production vs Test Logging
+
+You can run different log levels for production code vs tests:
+
+```bash
+# Production code at debug level, tests silent
+LOG_LEVEL=debug TEST_LOG_LEVEL=silent bun test
+
+# Production code at info level, tests with errors only
+LOG_LEVEL=info TEST_LOG_LEVEL=error bun run dev:gateway & bun test
+```
+
+### Component-Specific Logging
+
+The logger automatically tags output by component:
+
+```
+[2024-01-15T10:30:45.123Z] INFO  [gateway] HPKE keys initialized
+[2024-01-15T10:30:45.124Z] INFO  [relay] Server running port=8787
+[2024-01-15T10:30:45.125Z] DEBUG [ohttp-client] Encapsulating request method=POST
+```
+
 ## 🔒 Security Considerations
 
 ### Threat Model Analysis

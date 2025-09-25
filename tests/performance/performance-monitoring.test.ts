@@ -10,6 +10,7 @@
  */
 
 import { test, expect, describe, beforeEach, afterEach } from "bun:test";
+import { logger } from "../utils/test-logger.js";
 import { encodeRequest as encodeBhttp, decodeRequest as decodeBhttp } from "../../packages/ohttp-core/src/bhttp.js";
 import { encodeOhttpKeys, parseOhttpKeys } from "../../packages/ohttp-core/src/ohttp.js";
 import { createHpkeEngine } from "../../packages/hpke-engine/src/index.js";
@@ -239,10 +240,10 @@ describe("Performance - Resource Usage Monitoring", () => {
     for (const result of results) {
       const { testCase, size, metrics, encodedSize, compressionRatio } = result;
       
-      console.log(`✅ bHTTP ${testCase}: ${size}B -> ${encodedSize}B (${compressionRatio.toFixed(2)}x)`);
-      console.log(`   Duration: ${metrics.duration.toFixed(2)}ms`);
-      console.log(`   Memory: ${(metrics.memoryDelta.heapUsed / 1024).toFixed(2)}KB`);
-      console.log(`   CPU: ${(metrics.cpuDelta!.user / 1000).toFixed(2)}ms user, ${(metrics.cpuDelta!.system / 1000).toFixed(2)}ms system`);
+      logger.debug(` bHTTP ${testCase}: ${size}B -> ${encodedSize}B (${compressionRatio.toFixed(2)}x)`);
+      logger.debug(`   Duration: ${metrics.duration.toFixed(2)}ms`);
+      logger.debug(`   Memory: ${(metrics.memoryDelta.heapUsed / 1024).toFixed(2)}KB`);
+      logger.debug(`   CPU: ${(metrics.cpuDelta!.user / 1000).toFixed(2)}ms user, ${(metrics.cpuDelta!.system / 1000).toFixed(2)}ms system`);
       
       // Performance expectations
       expect(metrics.duration).toBeLessThan(size / 1000 + 50); // Linear scaling + 50ms overhead
@@ -254,9 +255,9 @@ describe("Performance - Resource Usage Monitoring", () => {
     expect(leakResult.hasLeak).toBe(false);
     
     if (leakResult.hasLeak) {
-      console.log(`⚠️ Potential memory leak detected: ${(leakResult.leakRate / 1024).toFixed(2)}KB/operation (confidence: ${(leakResult.confidence * 100).toFixed(1)}%)`);
+      logger.debug(` Potential memory leak detected: ${(leakResult.leakRate / 1024).toFixed(2)}KB/operation (confidence: ${(leakResult.confidence * 100).toFixed(1)}%)`);
     } else {
-      console.log(`✅ No memory leaks detected in bHTTP encoding`);
+      logger.debug(` No memory leaks detected in bHTTP encoding`);
     }
   });
 
@@ -277,7 +278,7 @@ describe("Performance - Resource Usage Monitoring", () => {
         try {
           await operation.op();
         } catch (error) {
-          console.log(`❌ HPKE ${operation.name} failed: ${(error as Error).message}`);
+          logger.debug(` HPKE ${operation.name} failed: ${(error as Error).message}`);
           throw error; // Don't silently ignore HPKE failures
         }
         
@@ -288,10 +289,10 @@ describe("Performance - Resource Usage Monitoring", () => {
       
       const averages = monitor.getAverages();
       
-      console.log(`✅ HPKE ${operation.name} (${iterations} iterations):`);
-      console.log(`   Avg duration: ${averages.avgDuration.toFixed(2)}ms`);
-      console.log(`   Avg memory: ${(averages.avgMemoryDelta / 1024).toFixed(2)}KB`);
-      console.log(`   Avg CPU: ${averages.avgCpuUser.toFixed(2)}ms user, ${averages.avgCpuSystem.toFixed(2)}ms system`);
+      logger.debug(` HPKE ${operation.name} (${iterations} iterations):`);
+      logger.debug(`   Avg duration: ${averages.avgDuration.toFixed(2)}ms`);
+      logger.debug(`   Avg memory: ${(averages.avgMemoryDelta / 1024).toFixed(2)}KB`);
+      logger.debug(`   Avg CPU: ${averages.avgCpuUser.toFixed(2)}ms user, ${averages.avgCpuSystem.toFixed(2)}ms system`);
       
       // Performance expectations for crypto operations
       expect(averages.avgDuration).toBeLessThan(1000); // Under 1 second
@@ -304,7 +305,7 @@ describe("Performance - Resource Usage Monitoring", () => {
     const leakResult = leakDetector.detectLeak();
     expect(leakResult.hasLeak).toBe(false);
     
-    console.log(`✅ HPKE operations memory leak check: ${leakResult.hasLeak ? 'LEAK DETECTED' : 'CLEAN'}`);
+    logger.debug(` HPKE operations memory leak check: ${leakResult.hasLeak ? 'LEAK DETECTED' : 'CLEAN'}`);
   });
 
   test("Key configuration processing performance", async () => {
@@ -325,7 +326,7 @@ describe("Performance - Resource Usage Monitoring", () => {
           publicKey: keyPair.publicKey.bytes,
         });
       } catch (error) {
-        console.log(`❌ Key generation failed for config ${i}: ${(error as Error).message}`);
+        logger.debug(` Key generation failed for config ${i}: ${(error as Error).message}`);
         throw error; // Don't silently use dummy data
       }
     }
@@ -342,10 +343,10 @@ describe("Performance - Resource Usage Monitoring", () => {
     
     expect(parsed.length).toBe(keyConfigs.length);
     
-    console.log(`✅ Key configuration processing (${keyConfigs.length} keys):`);
-    console.log(`   Encoding: ${encodeMetrics.duration.toFixed(2)}ms, ${(encodeMetrics.memoryDelta.heapUsed / 1024).toFixed(2)}KB`);
-    console.log(`   Parsing: ${parseMetrics.duration.toFixed(2)}ms, ${(parseMetrics.memoryDelta.heapUsed / 1024).toFixed(2)}KB`);
-    console.log(`   Total size: ${encoded.length} bytes`);
+    logger.debug(` Key configuration processing (${keyConfigs.length} keys):`);
+    logger.debug(`   Encoding: ${encodeMetrics.duration.toFixed(2)}ms, ${(encodeMetrics.memoryDelta.heapUsed / 1024).toFixed(2)}KB`);
+    logger.debug(`   Parsing: ${parseMetrics.duration.toFixed(2)}ms, ${(parseMetrics.memoryDelta.heapUsed / 1024).toFixed(2)}KB`);
+    logger.debug(`   Total size: ${encoded.length} bytes`);
     
     // Performance expectations
     expect(encodeMetrics.duration).toBeLessThan(100); // Under 100ms
@@ -425,18 +426,18 @@ describe("Performance - Resource Usage Monitoring", () => {
           const metrics = monitor.end();
           leakDetector.sample();
           
-          console.log(`✅ E2E ${requestType.name} request:`);
-          console.log(`   Total duration: ${metrics.duration.toFixed(2)}ms`);
-          console.log(`   Memory usage: ${(metrics.memoryDelta.heapUsed / 1024).toFixed(2)}KB`);
-          console.log(`   Network calls: ${fetchCount}`);
-          console.log(`   Avg fetch time: ${(fetchTimes.reduce((a, b) => a + b, 0) / fetchTimes.length).toFixed(2)}ms`);
+          logger.debug(` E2E ${requestType.name} request:`);
+          logger.debug(`   Total duration: ${metrics.duration.toFixed(2)}ms`);
+          logger.debug(`   Memory usage: ${(metrics.memoryDelta.heapUsed / 1024).toFixed(2)}KB`);
+          logger.debug(`   Network calls: ${fetchCount}`);
+          logger.debug(`   Avg fetch time: ${(fetchTimes.reduce((a, b) => a + b, 0) / fetchTimes.length).toFixed(2)}ms`);
           
           // Performance expectations
           expect(metrics.duration).toBeLessThan(10000); // Under 10 seconds
           expect(metrics.memoryDelta.heapUsed).toBeLessThan(50 * 1024 * 1024); // Under 50MB
           
         } catch (error) {
-          console.log(`❌ E2E ${requestType.name} failed: ${(error as Error).message}`);
+          logger.debug(` E2E ${requestType.name} failed: ${(error as Error).message}`);
           throw error; // Don't silently ignore failures
         }
         
@@ -453,7 +454,7 @@ describe("Performance - Resource Usage Monitoring", () => {
     const leakResult = leakDetector.detectLeak();
     expect(leakResult.hasLeak).toBe(false);
     
-    console.log(`✅ E2E performance memory check: ${leakResult.hasLeak ? 'LEAK DETECTED' : 'CLEAN'}`);
+    logger.debug(` E2E performance memory check: ${leakResult.hasLeak ? 'LEAK DETECTED' : 'CLEAN'}`);
   });
 });
 
@@ -492,7 +493,7 @@ describe("Performance - Regression Detection", () => {
     expect(bhttpMetrics.duration).toBeLessThan(baselines.bhttpEncoding.maxDuration);
     expect(bhttpMetrics.memoryDelta.heapUsed).toBeLessThan(baselines.bhttpEncoding.maxMemory);
     
-    console.log(`✅ bHTTP baseline: ${bhttpMetrics.duration.toFixed(2)}ms, ${(bhttpMetrics.memoryDelta.heapUsed / 1024).toFixed(2)}KB`);
+    logger.debug(` bHTTP baseline: ${bhttpMetrics.duration.toFixed(2)}ms, ${(bhttpMetrics.memoryDelta.heapUsed / 1024).toFixed(2)}KB`);
     
     // Test key generation baseline
     monitor.start();
@@ -503,7 +504,7 @@ describe("Performance - Regression Detection", () => {
     expect(keyGenMetrics.duration).toBeLessThan(baselines.keyGeneration.maxDuration);
     expect(keyGenMetrics.memoryDelta.heapUsed).toBeLessThan(baselines.keyGeneration.maxMemory);
     
-    console.log(`✅ Key generation baseline: ${keyGenMetrics.duration.toFixed(2)}ms, ${(keyGenMetrics.memoryDelta.heapUsed / 1024).toFixed(2)}KB`);
+    logger.debug(` Key generation baseline: ${keyGenMetrics.duration.toFixed(2)}ms, ${(keyGenMetrics.memoryDelta.heapUsed / 1024).toFixed(2)}KB`);
     
     // Test key config parsing baseline
     const testKeyConfig = {
@@ -525,9 +526,9 @@ describe("Performance - Regression Detection", () => {
     expect(configMetrics.duration).toBeLessThan(baselines.keyConfigParsing.maxDuration);
     expect(configMetrics.memoryDelta.heapUsed).toBeLessThan(baselines.keyConfigParsing.maxMemory);
     
-    console.log(`✅ Key config baseline: ${configMetrics.duration.toFixed(2)}ms, ${(configMetrics.memoryDelta.heapUsed / 1024).toFixed(2)}KB`);
+    logger.debug(` Key config baseline: ${configMetrics.duration.toFixed(2)}ms, ${(configMetrics.memoryDelta.heapUsed / 1024).toFixed(2)}KB`);
     
-    console.log(`✅ Performance baselines established and validated`);
+    logger.debug(` Performance baselines established and validated`);
   });
 
   test("Performance consistency across runs", () => {
@@ -573,9 +574,9 @@ describe("Performance - Regression Detection", () => {
     const durationCV = durationStdDev / avgDuration; // Coefficient of variation
     const memoryCV = memoryStdDev / avgMemory;
     
-    console.log(`✅ Performance consistency (${iterations} runs):`);
-    console.log(`   Duration: ${avgDuration.toFixed(2)}ms ± ${durationStdDev.toFixed(2)}ms (CV: ${(durationCV * 100).toFixed(1)}%)`);
-    console.log(`   Memory: ${(avgMemory / 1024).toFixed(2)}KB ± ${(memoryStdDev / 1024).toFixed(2)}KB (CV: ${(memoryCV * 100).toFixed(1)}%)`);
+    logger.debug(` Performance consistency (${iterations} runs):`);
+    logger.debug(`   Duration: ${avgDuration.toFixed(2)}ms ± ${durationStdDev.toFixed(2)}ms (CV: ${(durationCV * 100).toFixed(1)}%)`);
+    logger.debug(`   Memory: ${(avgMemory / 1024).toFixed(2)}KB ± ${(memoryStdDev / 1024).toFixed(2)}KB (CV: ${(memoryCV * 100).toFixed(1)}%)`);
     
     // Performance should be consistent (lenient for test environment)
     expect(durationCV).toBeLessThan(2.0); // Less than 200% variation (very lenient for test env)
@@ -592,7 +593,7 @@ describe("Performance - Regression Detection", () => {
     expect(durationOutliers.length).toBeLessThanOrEqual(2); // Allow up to 2 outliers
     expect(memoryOutliers.length).toBeLessThanOrEqual(2);
     
-    console.log(`✅ No performance outliers detected`);
+    logger.debug(` No performance outliers detected`);
   });
 });
 
@@ -633,7 +634,7 @@ describe("Performance - Resource Efficiency", () => {
       });
       
       expect(operations.length).toBe(load);
-      console.log(`✅ Load ${load}: ${duration.toFixed(2)}ms wall, ${cpuTime.toFixed(2)}ms CPU (efficiency: ${efficiency.toFixed(2)}x)`);
+      logger.debug(` Load ${load}: ${duration.toFixed(2)}ms wall, ${cpuTime.toFixed(2)}ms CPU (efficiency: ${efficiency.toFixed(2)}x)`);
     }
     
     // CPU efficiency should not degrade too much with load (lenient for test environment)
@@ -643,7 +644,7 @@ describe("Performance - Resource Efficiency", () => {
       expect(efficiencyRatio).toBeGreaterThan(0.3); // No more than 70% degradation (very lenient)
     }
     
-    console.log(`✅ CPU efficiency maintained across load levels`);
+    logger.debug(` CPU efficiency maintained across load levels`);
   });
 
   test("Memory efficiency patterns", () => {
@@ -677,7 +678,7 @@ describe("Performance - Resource Efficiency", () => {
       });
       
       expect(decoded.body.length).toBe(size);
-      console.log(`✅ Size ${size}B: ${(memoryUsed / 1024).toFixed(2)}KB memory, ${(overhead / 1024).toFixed(2)}KB overhead (${(efficiency * 100).toFixed(1)}% efficient)`);
+      logger.debug(` Size ${size}B: ${(memoryUsed / 1024).toFixed(2)}KB memory, ${(overhead / 1024).toFixed(2)}KB overhead (${(efficiency * 100).toFixed(1)}% efficient)`);
     }
     
     // Memory efficiency should be reasonable
@@ -695,7 +696,7 @@ describe("Performance - Resource Efficiency", () => {
       expect(ratio).toBeLessThanOrEqual(10); // Overhead growth less than or equal to 10x per size increase
     }
     
-    console.log(`✅ Memory efficiency patterns validated`);
+    logger.debug(` Memory efficiency patterns validated`);
   });
 
   test("Network efficiency simulation", async () => {
@@ -726,19 +727,19 @@ describe("Performance - Resource Efficiency", () => {
       
       expect(decoded.body).toEqual(originalData);
       
-      console.log(`✅ ${testMessage.name}:`);
-      console.log(`   Original: ${originalData.length}B`);
-      console.log(`   Encoded: ${encoded.length}B`);
-      console.log(`   Compression: ${compressionRatio.toFixed(2)}x`);
-      console.log(`   Overhead: ${overhead}B`);
-      console.log(`   Efficiency: ${(efficiency * 100).toFixed(1)}%`);
+      logger.debug(` ${testMessage.name}:`);
+      logger.debug(`   Original: ${originalData.length}B`);
+      logger.debug(`   Encoded: ${encoded.length}B`);
+      logger.debug(`   Compression: ${compressionRatio.toFixed(2)}x`);
+      logger.debug(`   Overhead: ${overhead}B`);
+      logger.debug(`   Efficiency: ${(efficiency * 100).toFixed(1)}%`);
       
       // Network efficiency expectations
       expect(compressionRatio).toBeLessThan(3.0); // No more than 3x expansion
       expect(overhead).toBeLessThan(Math.max(1000, originalData.length)); // Reasonable overhead
     }
     
-    console.log(`✅ Network efficiency simulation completed`);
+    logger.debug(` Network efficiency simulation completed`);
   });
 
   test("Garbage collection pressure analysis", () => {
@@ -772,16 +773,16 @@ describe("Performance - Resource Efficiency", () => {
     const memoryGrowth = finalMemory.heapUsed - initialMemory.heapUsed;
     const gcEfficiency = 1 - (memoryGrowth / totalAllocated);
     
-    console.log(`✅ GC pressure analysis (${iterations} iterations):`);
-    console.log(`   Total allocated: ${(totalAllocated / 1024 / 1024).toFixed(2)}MB`);
-    console.log(`   Memory growth: ${(memoryGrowth / 1024 / 1024).toFixed(2)}MB`);
-    console.log(`   GC efficiency: ${(gcEfficiency * 100).toFixed(1)}%`);
+    logger.debug(` GC pressure analysis (${iterations} iterations):`);
+    logger.debug(`   Total allocated: ${(totalAllocated / 1024 / 1024).toFixed(2)}MB`);
+    logger.debug(`   Memory growth: ${(memoryGrowth / 1024 / 1024).toFixed(2)}MB`);
+    logger.debug(`   GC efficiency: ${(gcEfficiency * 100).toFixed(1)}%`);
     
     // GC should be reasonably efficient
     expect(gcEfficiency).toBeGreaterThan(0.7); // At least 70% of temporary objects collected
     expect(memoryGrowth).toBeLessThan(totalAllocated * 0.5); // Memory growth less than 50% of allocated
     
-    console.log(`✅ Garbage collection efficiency validated`);
+    logger.debug(` Garbage collection efficiency validated`);
   });
 });
 
@@ -818,7 +819,7 @@ describe("Performance - Scalability Analysis", () => {
       });
       
       expect(batch.length).toBe(batchSize);
-      console.log(`✅ Batch ${batchSize}: ${duration.toFixed(2)}ms, ${throughput.toFixed(2)} ops/sec, ${(duration / batchSize).toFixed(2)}ms avg latency`);
+      logger.debug(` Batch ${batchSize}: ${duration.toFixed(2)}ms, ${throughput.toFixed(2)} ops/sec, ${(duration / batchSize).toFixed(2)}ms avg latency`);
     }
     
     // Analyze scaling characteristics
@@ -830,13 +831,13 @@ describe("Performance - Scalability Analysis", () => {
       const batchRatio = current.batchSize / previous.batchSize;
       const scalingEfficiency = throughputRatio / batchRatio;
       
-      console.log(`   Scaling ${previous.batchSize} -> ${current.batchSize}: ${(scalingEfficiency * 100).toFixed(1)}% efficiency`);
+      logger.debug(`   Scaling ${previous.batchSize} -> ${current.batchSize}: ${(scalingEfficiency * 100).toFixed(1)}% efficiency`);
       
       // Scaling should be reasonably efficient (lenient for test environment)
       expect(scalingEfficiency).toBeGreaterThan(0.05); // At least 5% scaling efficiency (very lenient)
     }
     
-    console.log(`✅ Throughput scaling analysis completed`);
+    logger.debug(` Throughput scaling analysis completed`);
   });
 
   test("Memory scaling under concurrent load", async () => {
@@ -873,7 +874,7 @@ describe("Performance - Scalability Analysis", () => {
       });
       
       expect(results_batch.length).toBe(concurrency);
-      console.log(`✅ Concurrency ${concurrency}: ${(memoryUsed / 1024).toFixed(2)}KB total, ${(memoryPerOp / 1024).toFixed(2)}KB per op`);
+      logger.debug(` Concurrency ${concurrency}: ${(memoryUsed / 1024).toFixed(2)}KB total, ${(memoryPerOp / 1024).toFixed(2)}KB per op`);
     }
     
     // Memory usage should scale reasonably (handle zero baseline case)
@@ -888,6 +889,6 @@ describe("Performance - Scalability Analysis", () => {
       }
     }
     
-    console.log(`✅ Memory scaling under concurrent load validated`);
+    logger.debug(` Memory scaling under concurrent load validated`);
   });
 });

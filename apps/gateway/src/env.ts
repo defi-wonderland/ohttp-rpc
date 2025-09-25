@@ -31,7 +31,7 @@ function loadEnvFile(): void {
         }
       }
     } catch (error) {
-      console.warn('Warning: Could not load .env file:', error);
+      logger.warn('Warning: Could not load .env file:', error);
     }
   }
 }
@@ -171,7 +171,8 @@ const envSchema = z.object({
   ENABLE_REPLAY_PROTECTION: z.string().transform(val => val.toLowerCase() === 'true').default('true'),
   
   // Logging configuration
-  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error"]).default("info"),
+  LOG_FORMAT: z.enum(["text", "json"]).default("text"),
   LOG_INNER_CONTENT: z.string().transform(val => val.toLowerCase() === 'true').default('false'), // NEVER enable in production
 });
 
@@ -197,19 +198,19 @@ export function loadConfig(): GatewayConfig {
     
     return config;
   } catch (error) {
-    console.error("❌ Invalid environment configuration:");
+    logger.error("Invalid environment configuration:");
     if (error instanceof z.ZodError) {
       for (const issue of error.issues) {
-        console.error(`  ${issue.path.join('.')}: ${issue.message}`);
+        logger.error(`  ${issue.path.join('.')}: ${issue.message}`);
       }
     } else {
-      console.error(`  ${error}`);
+      logger.error(`  ${error}`);
     }
-    console.error("");
-    console.error("💡 Tips:");
-    console.error("  - Copy env.example to .env and update values");
-    console.error("  - Generate secure HPKE seed: bun scripts/generate-keys.ts");
-    console.error("  - Check configuration documentation in README");
+    logger.error("");
+    logger.error("Tips:");
+    logger.error("  - Copy env.example to .env and update values");
+    logger.error("  - Generate secure HPKE seed: bun scripts/generate-keys.ts");
+    logger.error("  - Check configuration documentation in README");
     process.exit(1);
   }
 }
@@ -253,18 +254,18 @@ function validateProductionConfig(config: GatewayConfig): void {
   
   // Display warnings
   if (warnings.length > 0) {
-    console.warn("⚠️  Production Configuration Warnings:");
+    logger.warn("Production Configuration Warnings:");
     for (const warning of warnings) {
-      console.warn(`  ${warning}`);
+      logger.warn(`  ${warning}`);
     }
-    console.warn("");
+    logger.warn("");
   }
   
   // Fail on errors
   if (errors.length > 0) {
-    console.error("❌ Production Configuration Errors:");
+    logger.error("Production Configuration Errors:");
     for (const error of errors) {
-      console.error(`  ${error}`);
+      logger.error(`  ${error}`);
     }
     throw new Error("Production configuration validation failed");
   }
@@ -301,6 +302,7 @@ export function getDevConfig(): any {
     DATE_SKEW_TOLERANCE_MS: 300000, // 5 minutes
     ENABLE_REPLAY_PROTECTION: true,
     LOG_LEVEL: "debug",
+    LOG_FORMAT: "text",
     LOG_INNER_CONTENT: false, // Keep false even in dev for privacy
   };
 }

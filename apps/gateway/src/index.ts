@@ -9,6 +9,7 @@ import { loadConfig, getDevConfig, validateHpkeSeed, type GatewayConfig } from "
 import { GatewayHpkeManager } from "./crypto/hpke.js";
 import { handleOhttpKeys, handleConditionalOhttpKeys, handleOhttpKeysJson } from "./handlers/keys.js";
 import { handleGateway, validateGatewayRequest } from "./handlers/gateway.js";
+import { createLogger } from "@ohttp/shared";
 
 /**
  * Gateway metrics (privacy-preserving)
@@ -69,12 +70,19 @@ function recordRequest(type: 'success' | 'policy_denial' | 'upstream_error' | 'c
  */
 class GatewayServer {
   private hpkeManager: GatewayHpkeManager;
+  private logger = createLogger('gateway');
   
   constructor(
     private config: GatewayConfig,
     hpkeManager?: GatewayHpkeManager
   ) {
     this.hpkeManager = hpkeManager || new GatewayHpkeManager();
+    
+    // Configure logger based on config
+    this.logger.configure({
+      level: this.config.LOG_LEVEL,
+      format: this.config.LOG_FORMAT,
+    });
   }
   
   /**
@@ -88,11 +96,11 @@ class GatewayServer {
       // Initialize HPKE manager
       await this.hpkeManager.initializeFromSeed(seedBytes);
       
-      console.log("✓ HPKE keys initialized");
-      console.log("✓ Gateway ready");
+      this.logger.info("HPKE keys initialized");
+      this.logger.info("Gateway ready");
       
     } catch (error) {
-      console.error("Failed to initialize gateway:", error);
+      this.logger.error("Failed to initialize gateway", {}, error instanceof Error ? error : undefined);
       throw error;
     }
   }
@@ -130,7 +138,7 @@ class GatewayServer {
       const latency = Date.now() - startTime;
       recordRequest('crypto_error', latency);
       
-      console.error("Gateway request error:", error);
+      this.logger.error("Gateway request error", { latency: `${latency}ms` }, error instanceof Error ? error : undefined);
       return new Response("Internal server error", { status: 500 });
     }
   }
@@ -252,7 +260,7 @@ function createServer(config: GatewayConfig) {
           port: config.GATEWAY_PORT,
           fetch: this.fetch.bind(this),
         });
-        console.log(`🚀 Gateway server running on port ${config.GATEWAY_PORT}`);
+        gateway.logger.info("Gateway server running", { port: config.GATEWAY_PORT });
       }
     },
     
@@ -260,7 +268,7 @@ function createServer(config: GatewayConfig) {
       if (server) {
         server.stop();
         server = null;
-        console.log("🛑 Gateway server stopped");
+        gateway.logger.info("Gateway server stopped");
       }
     }
   };
@@ -277,18 +285,28 @@ async function main() {
     ? getDevConfig()
     : loadConfig();
   
-  console.log("Starting OHTTP Gateway Server...");
-  console.log(`Port: ${config.GATEWAY_PORT}`);
-  console.log(`Allowed Targets: ${config.ALLOWED_TARGETS.join(", ")}`);
-  console.log(`Allowed Headers: ${config.ALLOWED_HEADERS.join(", ")}`);
-  console.log(`Max Inner Bytes: ${config.MAX_INNER_BYTES}`);
+  const logger = createLogger('gateway-main', {
+    level: config.LOG_LEVEL,
+    format: config.LOG_FORMAT,
+  });
+  
+  logger.info("Starting OHTTP Gateway Server");
+  logger.info("Configuration", {
+    port: config.GATEWAY_PORT,
+    allowedTargets: config.ALLOWED_TARGETS.length,
+    allowedHeaders: config.ALLOWED_HEADERS.length,
+    maxInnerBytes: config.MAX_INNER_BYTES,
+    logLevel: config.LOG_LEVEL,
+  });
   
   // Create and start server
   const server = createServer(config);
   await server.start();
   
-  console.log(`OHTTP Keys: http://localhost:${server.port}/ohttp-keys`);
-  console.log(`Health check: http://localhost:${server.port}/health`);
+  logger.info("Server endpoints", {
+    ohttpKeys: `http://localhost:${server.port}/ohttp-keys`,
+    health: `http://localhost:${server.port}/health`,
+  });
   
   return server;
 }
@@ -300,5 +318,9 @@ export { createServer, GatewayServer };
 if (import.meta.main) {
   main().then(server => {
     // Server started
-  }).catch(console.error);
+  }).catch(error => {
+    const logger = createLogger('gateway-main');
+    logger.error("Failed to start server", {}, error instanceof Error ? error : undefined);
+    process.exit(1);
+  });
 }

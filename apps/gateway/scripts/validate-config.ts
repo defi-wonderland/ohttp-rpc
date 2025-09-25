@@ -16,7 +16,7 @@ function validateAndDisplay(config: GatewayConfig, source: string): void {
   console.log('');
   
   // Server settings
-  console.log('🖥️  Server:');
+  console.log('  Server:');
   console.log(`   Port: ${config.GATEWAY_PORT}`);
   console.log('');
   
@@ -24,18 +24,18 @@ function validateAndDisplay(config: GatewayConfig, source: string): void {
   console.log('🔐 Security:');
   console.log(`   HPKE Suite: ${config.HPKE_SUITE}`);
   console.log(`   HPKE Seed Length: ${String(config.HPKE_SEED).length} chars`);
-  console.log(`   Require TLS: ${config.REQUIRE_TLS_UPSTREAM ? '✅' : '❌'}`);
-  console.log(`   Allow Redirects: ${config.ALLOW_REDIRECTS ? '⚠️' : '✅'}`);
-  console.log(`   Replay Protection: ${config.ENABLE_REPLAY_PROTECTION ? '✅' : '❌'}`);
+  console.log(`   Require TLS: ${config.REQUIRE_TLS_UPSTREAM ? '' : ''}`);
+  console.log(`   Allow Redirects: ${config.ALLOW_REDIRECTS ? '' : ''}`);
+  console.log(`   Replay Protection: ${config.ENABLE_REPLAY_PROTECTION ? '' : ''}`);
   console.log('');
   
   // Policy settings
-  console.log('🎯 Policy:');
+  console.log(' Policy:');
   console.log(`   Allowed Targets (${config.ALLOWED_TARGETS.length}):`);
   for (const target of config.ALLOWED_TARGETS) {
     const isSecure = target.startsWith('https://');
     const isLocal = target.includes('localhost') || target.includes('127.0.0.1');
-    console.log(`     ${isSecure ? '🔒' : '⚠️'} ${target}${isLocal ? ' (local)' : ''}`);
+    console.log(`     ${isSecure ? '' : ''} ${target}${isLocal ? ' (local)' : ''}`);
   }
   console.log('');
   console.log(`   Allowed Headers (${config.ALLOWED_HEADERS.length}):`);
@@ -45,20 +45,20 @@ function validateAndDisplay(config: GatewayConfig, source: string): void {
   console.log('');
   
   // Timeout settings
-  console.log('⏱️  Timeouts:');
+  console.log('  Timeouts:');
   console.log(`   Connect: ${config.UPSTREAM_CONNECT_TIMEOUT_MS}ms`);
   console.log(`   Total: ${config.UPSTREAM_TOTAL_TIMEOUT_MS}ms`);
   console.log(`   Date Skew Tolerance: ${config.DATE_SKEW_TOLERANCE_MS}ms`);
   console.log('');
   
   // Logging settings
-  console.log('📝 Logging:');
+  console.log(' Logging:');
   console.log(`   Level: ${config.LOG_LEVEL}`);
-  console.log(`   Log Inner Content: ${config.LOG_INNER_CONTENT ? '❌ DANGEROUS' : '✅'}`);
+  console.log(`   Log Inner Content: ${config.LOG_INNER_CONTENT ? ' DANGEROUS' : ''}`);
   console.log('');
   
   // Security analysis
-  console.log('🔍 Security Analysis:');
+  console.log(' Security Analysis:');
   const issues: string[] = [];
   const warnings: string[] = [];
   
@@ -96,17 +96,17 @@ function validateAndDisplay(config: GatewayConfig, source: string): void {
   
   // Display results
   if (issues.length === 0 && warnings.length === 0) {
-    console.log('   ✅ No security issues detected');
+    console.log('    No security issues detected');
   } else {
     if (issues.length > 0) {
-      console.log('   ❌ Issues:');
+      console.log('    Issues:');
       for (const issue of issues) {
         console.log(`      ${issue}`);
       }
     }
     
     if (warnings.length > 0) {
-      console.log('   ⚠️  Warnings:');
+      console.log('     Warnings:');
       for (const warning of warnings) {
         console.log(`      ${warning}`);
       }
@@ -124,7 +124,7 @@ async function main() {
   const validateDev = args.includes('--dev');
   const validateProd = args.includes('--prod') || args.length === 0;
   
-  console.log('🔍 OHTTP Gateway Configuration Validator');
+  console.log(' OHTTP Gateway Configuration Validator');
   console.log('==========================================');
   console.log('');
   
@@ -140,11 +140,11 @@ async function main() {
       const prodConfig = loadConfig();
       validateAndDisplay(prodConfig, 'Production');
       
-      console.log('✅ Configuration is valid and ready for deployment!');
+      console.log(' Configuration is valid and ready for deployment!');
     }
     
   } catch (error) {
-    console.error('❌ Configuration validation failed:');
+    console.error(' Configuration validation failed:');
     console.error(error);
     process.exit(1);
   }

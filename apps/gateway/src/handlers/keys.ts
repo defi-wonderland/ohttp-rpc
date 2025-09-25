@@ -2,9 +2,11 @@
  * OHTTP Keys endpoint handler
  */
 
-import { CT_OHTTP_KEYS } from "@ohttp/shared";
+import { CT_OHTTP_KEYS, createLogger } from "@ohttp/shared";
 import { encodeOhttpKeys, createTestKeyConfig } from "@ohttp/core";
 import type { GatewayHpkeManager } from "../crypto/hpke.js";
+
+const logger = createLogger('keys-handler');
 
 /**
  * Handle GET /ohttp-keys request
@@ -52,7 +54,7 @@ export async function handleOhttpKeys(
     });
     
   } catch (error) {
-    console.error("Failed to generate OHTTP keys:", error);
+    logger.error("Failed to generate OHTTP keys", {}, error instanceof Error ? error : undefined);
     
     return new Response("Internal server error", {
       status: 500,
@@ -110,7 +112,7 @@ export async function handleConditionalOhttpKeys(
     return handleOhttpKeys(hpkeManager);
     
   } catch (error) {
-    console.error("Failed to handle conditional OHTTP keys request:", error);
+    logger.error("Failed to handle conditional OHTTP keys request", {}, error instanceof Error ? error : undefined);
     return handleOhttpKeys(hpkeManager);
   }
 }
@@ -176,7 +178,7 @@ export async function handleOhttpKeysJson(
     });
     
   } catch (error) {
-    console.error("Failed to generate OHTTP keys JSON:", error);
+    logger.error("Failed to generate OHTTP keys JSON", {}, error instanceof Error ? error : undefined);
     
     return new Response(
       JSON.stringify({ error: "Failed to generate keys" }),

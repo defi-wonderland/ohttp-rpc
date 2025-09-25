@@ -6,6 +6,7 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { logger } from "../utils/test-logger.js";
 import { createHpkeEngine } from "../../packages/hpke-engine/src/index.js";
 import { OhttpClient } from "../../packages/sdk/src/client.js";
 import { ohttpFetch, ohttpJsonRpc } from "../../packages/sdk/src/fetch.js";
@@ -31,7 +32,7 @@ interface TestServers {
 let servers: TestServers;
 
 beforeAll(async () => {
-  console.log("🚀 Starting E2E test infrastructure...");
+  logger.debug(" Starting E2E test infrastructure...");
   
   // Start Mock RPC Server with dynamic port allocation
   const mockRpcPort = 3400 + Math.floor(Math.random() * 1000); // Use random port to avoid conflicts
@@ -44,7 +45,7 @@ beforeAll(async () => {
     fetch: mockRpcHandler.fetch,
   });
   
-  console.log(`✅ Mock RPC server started on port ${mockRpcPort}`);
+  logger.debug(` Mock RPC server started on port ${mockRpcPort}`);
   
   // Start Gateway Server
   const gatewayPort = 8800 + Math.floor(Math.random() * 1000);
@@ -62,7 +63,7 @@ beforeAll(async () => {
   
   const gateway = createGatewayServer(gatewayConfig);
   await gateway.start();
-  console.log(`✅ Gateway server started on port ${gatewayConfig.GATEWAY_PORT}`);
+  logger.debug(` Gateway server started on port ${gatewayConfig.GATEWAY_PORT}`);
   
   // Start Relay Server
   const relayPort = 8801 + Math.floor(Math.random() * 1000);
@@ -76,7 +77,7 @@ beforeAll(async () => {
   
   const relay = createRelayServer(relayConfig);
   relay.start();
-  console.log(`✅ Relay server started on port ${relayConfig.RELAY_PORT}`);
+  logger.debug(` Relay server started on port ${relayConfig.RELAY_PORT}`);
   
   // Give servers time to start
   await new Promise(resolve => setTimeout(resolve, 1000));
@@ -91,25 +92,25 @@ beforeAll(async () => {
     relayPort: relayConfig.RELAY_PORT
   };
   
-  console.log("🎯 E2E test infrastructure ready!");
+  logger.debug(" E2E test infrastructure ready!");
 });
 
 afterAll(async () => {
-  console.log("🧹 Cleaning up E2E test infrastructure...");
+  logger.debug("🧹 Cleaning up E2E test infrastructure...");
   
   if (servers) {
     servers.mockRpc.stop();
     servers.mockRpcServer.stop();
-    console.log("✅ Mock RPC server stopped");
+    logger.debug(" Mock RPC server stopped");
     
     await servers.gateway.close();
-    console.log("✅ Gateway server stopped");
+    logger.debug(" Gateway server stopped");
     
     await servers.relay.close();
-    console.log("✅ Relay server stopped");
+    logger.debug(" Relay server stopped");
   }
   
-  console.log("🎯 E2E cleanup complete!");
+  logger.debug(" E2E cleanup complete!");
 });
 
 describe("E2E Integration - Complete OHTTP Flow", () => {
@@ -123,7 +124,7 @@ describe("E2E Integration - Complete OHTTP Flow", () => {
     const keyConfigBytes = new Uint8Array(await response.arrayBuffer());
     expect(keyConfigBytes.length).toBeGreaterThan(0);
     
-    console.log(`✅ Gateway serves key config: ${keyConfigBytes.length} bytes`);
+    logger.debug(` Gateway serves key config: ${keyConfigBytes.length} bytes`);
   });
   
   test("Direct JSON-RPC call to Mock RPC", async () => {
@@ -144,7 +145,7 @@ describe("E2E Integration - Complete OHTTP Flow", () => {
     const result = await response.json();
     expect(result.result).toBe("0x1");
     
-    console.log(`✅ Direct RPC call successful: chainId = ${result.result}`);
+    logger.debug(` Direct RPC call successful: chainId = ${result.result}`);
   });
   
   test("OHTTP Client initialization with live servers", async () => {
@@ -155,7 +156,7 @@ describe("E2E Integration - Complete OHTTP Flow", () => {
     });
     
     expect(client).toBeDefined();
-    console.log("✅ OHTTP Client initialized with live key config");
+    logger.debug(" OHTTP Client initialized with live key config");
   });
   
   test("Complete OHTTP flow: Client -> Relay -> Gateway -> Mock RPC", async () => {
@@ -174,7 +175,7 @@ describe("E2E Integration - Complete OHTTP Flow", () => {
     );
     
     expect(result).toBe("0x1");
-    console.log(`✅ Complete OHTTP flow successful: chainId = ${result}`);
+    logger.debug(` Complete OHTTP flow successful: chainId = ${result}`);
   });
   
   test("OHTTP fetch with different RPC methods", async () => {
@@ -200,7 +201,7 @@ describe("E2E Integration - Complete OHTTP Flow", () => {
       );
       
       expect(result).toBe(expected);
-      console.log(`✅ OHTTP ${method}: ${result}`);
+      logger.debug(` OHTTP ${method}: ${result}`);
     }
   });
   
@@ -239,7 +240,7 @@ describe("E2E Integration - Complete OHTTP Flow", () => {
     const blockNumber = await provider.request({ method: "eth_blockNumber", params: [] });
     expect(blockNumber).toBe("0x123456");
     
-    console.log("✅ EIP-1193 Provider working with live servers");
+    logger.debug(" EIP-1193 Provider working with live servers");
   });
   
   test("Error handling in complete flow", async () => {
@@ -260,7 +261,7 @@ describe("E2E Integration - Complete OHTTP Flow", () => {
     } catch (error: any) {
       expect(error).toBeDefined();
       expect(error.message).toContain("Method not found");
-      console.log(`✅ Error handling works: ${error.message}`);
+      logger.debug(` Error handling works: ${error.message}`);
     }
   });
   
@@ -288,7 +289,7 @@ describe("E2E Integration - Complete OHTTP Flow", () => {
       expect(result).toBe("0x1");
     });
     
-    console.log(`✅ Concurrent requests successful: ${results.length} requests`);
+    logger.debug(` Concurrent requests successful: ${results.length} requests`);
   });
   
   test("Large request handling", async () => {
@@ -309,7 +310,7 @@ describe("E2E Integration - Complete OHTTP Flow", () => {
     );
     
     expect(result).toBe("0x1");
-    console.log(`✅ Large request handled: ${largeParams.length} params`);
+    logger.debug(` Large request handled: ${largeParams.length} params`);
   });
   
   test("CORS handling in Relay server", async () => {
@@ -329,7 +330,7 @@ describe("E2E Integration - Complete OHTTP Flow", () => {
     expect(preflightResponse.headers.get("access-control-allow-origin")).toBe("http://localhost:3000");
     expect(preflightResponse.headers.get("access-control-allow-methods")).toContain("POST");
     
-    console.log("✅ CORS preflight handling works");
+    logger.debug(" CORS preflight handling works");
   });
 });
 
@@ -365,7 +366,7 @@ describe("E2E Integration - Performance & Reliability", () => {
     expect(successCount).toBe(requestCount);
     expect(avgLatency).toBeLessThan(1000); // Less than 1 second average
     
-    console.log(`✅ Load test: ${successCount}/${requestCount} successful, ${avgLatency.toFixed(2)}ms avg latency`);
+    logger.debug(` Load test: ${successCount}/${requestCount} successful, ${avgLatency.toFixed(2)}ms avg latency`);
   });
   
   test("Memory usage stability", async () => {
@@ -401,6 +402,6 @@ describe("E2E Integration - Performance & Reliability", () => {
     // Should not grow significantly (less than 50MB)
     expect(heapGrowth).toBeLessThan(50 * 1024 * 1024);
     
-    console.log(`✅ Memory stability: heap growth ${(heapGrowth / 1024 / 1024).toFixed(2)}MB`);
+    logger.debug(` Memory stability: heap growth ${(heapGrowth / 1024 / 1024).toFixed(2)}MB`);
   });
 });

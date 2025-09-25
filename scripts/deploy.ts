@@ -72,7 +72,7 @@ async function deployDocker(config: DeploymentConfig): Promise<void> {
   const envFile = join(process.cwd(), '.env');
   if (!existsSync(envFile)) {
     console.log('');
-    console.log('⚠️  No .env file found. Creating from template...');
+    console.log('  No .env file found. Creating from template...');
     console.log('📋 Please edit .env file with your configuration:');
     console.log('   1. Set GATEWAY_HPKE_SEED (generate with: bun apps/gateway/scripts/generate-keys.ts)');
     console.log('   2. Configure GATEWAY_ALLOWED_TARGETS');
@@ -82,8 +82,8 @@ async function deployDocker(config: DeploymentConfig): Promise<void> {
     // Copy template
     await execCommand('cp', ['docker.env.example', '.env']);
     
-    console.log('✅ Created .env from template');
-    console.log('📝 Edit .env file and run deployment again');
+    console.log(' Created .env from template');
+    console.log(' Edit .env file and run deployment again');
     return;
   }
   
@@ -94,16 +94,16 @@ async function deployDocker(config: DeploymentConfig): Promise<void> {
   await execCommand('docker-compose', ['build', ...services]);
   
   // Start services
-  console.log(`🚀 Starting services: ${services.join(', ')}`);
+  console.log(` Starting services: ${services.join(', ')}`);
   await execCommand('docker-compose', ['up', '-d', ...services]);
   
   // Show status
   console.log('');
-  console.log('📊 Deployment Status:');
+  console.log(' Deployment Status:');
   await execCommand('docker-compose', ['ps']);
   
   console.log('');
-  console.log('🔍 Health Checks:');
+  console.log(' Health Checks:');
   for (const service of services) {
     const port = service === 'gateway' ? '8788' : '8787';
     console.log(`   ${service}: http://localhost:${port}/health`);
@@ -128,11 +128,11 @@ async function deployNative(config: DeploymentConfig): Promise<void> {
     const servicePath = join(process.cwd(), 'apps', service);
     const envFile = join(servicePath, '.env');
     
-    console.log(`\n🔧 Setting up ${service}...`);
+    console.log(`\n Setting up ${service}...`);
     
     // Check for configuration
     if (!existsSync(envFile)) {
-      console.log(`⚠️  No .env file found for ${service}`);
+      console.log(`  No .env file found for ${service}`);
       console.log(`📋 Run setup: cd apps/${service} && bun run setup`);
       continue;
     }
@@ -146,19 +146,19 @@ async function deployNative(config: DeploymentConfig): Promise<void> {
     await execCommand('bun', ['run', 'build'], servicePath);
     
     // Validate configuration
-    console.log(`🔍 Validating ${service} configuration...`);
+    console.log(` Validating ${service} configuration...`);
     try {
       await execCommand('bun', ['run', 'validate-config'], servicePath);
     } catch (error) {
-      console.error(`❌ Configuration validation failed for ${service}`);
+      console.error(` Configuration validation failed for ${service}`);
       throw error;
     }
   }
   
   console.log('');
-  console.log('✅ Native deployment prepared');
+  console.log(' Native deployment prepared');
   console.log('');
-  console.log('🚀 Start services:');
+  console.log(' Start services:');
   for (const service of services) {
     console.log(`   ${service}: cd apps/${service} && bun run start`);
   }
@@ -168,7 +168,7 @@ async function deployNative(config: DeploymentConfig): Promise<void> {
  * Show deployment help
  */
 function showHelp(): void {
-  console.log('🚀 OHTTP Deployment Script');
+  console.log(' OHTTP Deployment Script');
   console.log('==========================');
   console.log('');
   console.log('Usage:');
@@ -227,14 +227,14 @@ async function main() {
     if (!hasDocker && hasBun) {
       config.mode = 'native';
     } else if (!hasDocker && !hasBun) {
-      console.error('❌ Neither Docker nor Bun is available');
+      console.error(' Neither Docker nor Bun is available');
       console.error('   Install Docker: https://docs.docker.com/get-docker/');
       console.error('   Install Bun: https://bun.sh/docs/installation');
       process.exit(1);
     }
   }
   
-  console.log('🚀 OHTTP Deployment');
+  console.log(' OHTTP Deployment');
   console.log('===================');
   console.log('');
   console.log(`📋 Configuration:`);
@@ -251,11 +251,11 @@ async function main() {
     }
     
     console.log('');
-    console.log('🎉 Deployment completed successfully!');
+    console.log(' Deployment completed successfully!');
     
   } catch (error) {
     console.error('');
-    console.error('❌ Deployment failed:');
+    console.error(' Deployment failed:');
     console.error(error);
     process.exit(1);
   }

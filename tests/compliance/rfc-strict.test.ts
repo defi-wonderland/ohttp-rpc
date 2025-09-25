@@ -10,6 +10,7 @@
  */
 
 import { test, expect, describe } from "bun:test";
+import { logger } from "../utils/test-logger.js";
 import { 
   parseOhttpKeys, 
   encodeOhttpKeys, 
@@ -53,7 +54,7 @@ describe("RFC 9458 - Section 3: Key Configuration Format", () => {
     expect(parsed[0].keyId).toEqual(keyId);
     expect(parsed[0].publicKey).toEqual(publicKey);
     
-    console.log(`✅ Key configuration binary format: ${encoded.length} bytes, length=${length}`);
+    logger.debug(` Key configuration binary format: ${encoded.length} bytes, length=${length}`);
   });
 
   test("Section 3.1: Key ID length validation (1-8 bytes)", () => {
@@ -71,7 +72,7 @@ describe("RFC 9458 - Section 3: Key Configuration Format", () => {
       const parsed = parseOhttpKeys(encoded);
       
       expect(parsed[0].keyId).toEqual(keyId);
-      console.log(`✅ Key ID length ${len}: ${Array.from(keyId).map(b => b.toString(16)).join('')}`);
+      logger.debug(` Key ID length ${len}: ${Array.from(keyId).map(b => b.toString(16)).join('')}`);
     }
     
     // Test edge cases that should be handled gracefully
@@ -87,7 +88,7 @@ describe("RFC 9458 - Section 3: Key Configuration Format", () => {
       const parsed = parseOhttpKeys(encoded);
       
       expect(parsed[0].keyId).toEqual(testCase.keyId);
-      console.log(`✅ Edge case: ${testCase.desc}`);
+      logger.debug(` Edge case: ${testCase.desc}`);
     }
   });
 
@@ -112,7 +113,7 @@ describe("RFC 9458 - Section 3: Key Configuration Format", () => {
       const reconstructed = (highByte << 8) | lowByte;
       
       expect(reconstructed).toBe(id);
-      console.log(`✅ Suite ID ${suite.name}: 0x${id!.toString(16).padStart(4, '0')} (${highByte}, ${lowByte})`);
+      logger.debug(` Suite ID ${suite.name}: 0x${id!.toString(16).padStart(4, '0')} (${highByte}, ${lowByte})`);
     }
   });
 
@@ -140,7 +141,7 @@ describe("RFC 9458 - Section 3: Key Configuration Format", () => {
       expect(parsed[i].suite.aead).toBe(configs[i].suite.aead);
     }
     
-    console.log(`✅ Multiple key configurations: ${configs.length} keys, ${encoded.length} bytes total`);
+    logger.debug(` Multiple key configurations: ${configs.length} keys, ${encoded.length} bytes total`);
   });
 
   test("Section 3.2: Key configuration selection algorithm", () => {
@@ -166,7 +167,7 @@ describe("RFC 9458 - Section 3: Key Configuration Format", () => {
     // Should prefer first supported configuration
     expect(selected!.keyId).toEqual(configs[0].keyId);
     
-    console.log(`✅ Selected key config: ID=${selected!.keyId[0]}, suite=${selected!.suite.aead}`);
+    logger.debug(` Selected key config: ID=${selected!.keyId[0]}, suite=${selected!.suite.aead}`);
   });
 });
 
@@ -231,11 +232,11 @@ describe("RFC 9458 - Section 4: Message Formats", () => {
     expect(parsedEnc).toEqual(enc);
     expect(parsedCiphertext).toEqual(ciphertext);
     
-    console.log(`✅ Encapsulated request format: ${request.length} bytes`);
-    console.log(`   Key ID: 0x${keyId.toString(16)}`);
-    console.log(`   KEM ID: 0x${kemId.toString(16)}`);
-    console.log(`   KDF ID: 0x${kdfId.toString(16)}`);
-    console.log(`   AEAD ID: 0x${aeadId.toString(16)}`);
+    logger.debug(` Encapsulated request format: ${request.length} bytes`);
+    logger.debug(`   Key ID: 0x${keyId.toString(16)}`);
+    logger.debug(`   KEM ID: 0x${kemId.toString(16)}`);
+    logger.debug(`   KDF ID: 0x${kdfId.toString(16)}`);
+    logger.debug(`   AEAD ID: 0x${aeadId.toString(16)}`);
   });
 
   test("Section 4.2: Encapsulated Response format compliance", () => {
@@ -276,9 +277,9 @@ describe("RFC 9458 - Section 4: Message Formats", () => {
     const parsedAuthTag = parsedCiphertext.slice(parsedCiphertext.length - 16);
     expect(parsedAuthTag).toEqual(authTag);
     
-    console.log(`✅ Encapsulated response format: ${response.length} bytes`);
-    console.log(`   Nonce: ${secretLength} bytes`);
-    console.log(`   Ciphertext: ${ciphertext.length} bytes (including ${authTag.length}-byte auth tag)`);
+    logger.debug(` Encapsulated response format: ${response.length} bytes`);
+    logger.debug(`   Nonce: ${secretLength} bytes`);
+    logger.debug(`   Ciphertext: ${ciphertext.length} bytes (including ${authTag.length}-byte auth tag)`);
   });
 
   test("Section 4.1: Minimum and maximum message sizes", () => {
@@ -293,14 +294,14 @@ describe("RFC 9458 - Section 4: Message Formats", () => {
     minRequest.set(minCiphertext, 7 + 32);
     
     expect(minRequest.length).toBe(1 + 2 + 2 + 2 + 32 + 16); // 55 bytes minimum
-    console.log(`✅ Minimum OHTTP request: ${minRequest.length} bytes`);
+    logger.debug(` Minimum OHTTP request: ${minRequest.length} bytes`);
     
     // Test reasonable maximum (implementation-dependent)
     const maxCiphertext = new Uint8Array(64 * 1024); // 64KB ciphertext
     const maxRequest = new Uint8Array(1 + 2 + 2 + 2 + 32 + maxCiphertext.length);
     
     expect(maxRequest.length).toBeGreaterThan(65536);
-    console.log(`✅ Large OHTTP request: ${maxRequest.length} bytes`);
+    logger.debug(` Large OHTTP request: ${maxRequest.length} bytes`);
   });
 });
 
@@ -317,7 +318,7 @@ describe("RFC 9458 - Section 5: HTTP Usage", () => {
       expect(allowedMethods).not.toContain(method);
     }
     
-    console.log(`✅ HTTP method restriction: only ${allowedMethods.join(', ')} allowed`);
+    logger.debug(` HTTP method restriction: only ${allowedMethods.join(', ')} allowed`);
   });
 
   test("Section 5.1: Informational response prohibition", () => {
@@ -337,8 +338,8 @@ describe("RFC 9458 - Section 5: HTTP Usage", () => {
       expect(code < 100 || code >= 200).toBe(true);
     }
     
-    console.log(`✅ Informational responses prohibited: ${informationalCodes.join(', ')}`);
-    console.log(`✅ Supported status codes: ${supportedCodes.join(', ')}`);
+    logger.debug(` Informational responses prohibited: ${informationalCodes.join(', ')}`);
+    logger.debug(` Supported status codes: ${supportedCodes.join(', ')}`);
   });
 
   test("Section 5.2: Response encapsulation requirement", () => {
@@ -367,7 +368,7 @@ describe("RFC 9458 - Section 5: HTTP Usage", () => {
       expect(decoded.status).toBe(testResponse.status);
       expect(new TextDecoder().decode(decoded.body)).toBe(testResponse.body);
       
-      console.log(`✅ Response ${testResponse.status} encapsulation: ${bhttpResponse.length} bytes`);
+      logger.debug(` Response ${testResponse.status} encapsulation: ${bhttpResponse.length} bytes`);
     }
   });
 });
@@ -387,12 +388,12 @@ describe("RFC 9458 - Section 6: Security Considerations", () => {
         
         // If parsing succeeds, verify it's handled safely
         expect(Array.isArray(parsed)).toBe(true);
-        console.log(`⚠️ Malformed config parsed (may be acceptable): ${config.length} bytes`);
+        logger.debug(` Malformed config parsed (may be acceptable): ${config.length} bytes`);
         
       } catch (error) {
         // Expected - malformed configs should be rejected
         expect(error).toBeInstanceOf(Error);
-        console.log(`✅ Rejected malformed config: ${config.length} bytes - ${(error as Error).message}`);
+        logger.debug(` Rejected malformed config: ${config.length} bytes - ${(error as Error).message}`);
       }
     }
   });
@@ -419,16 +420,16 @@ describe("RFC 9458 - Section 6: Security Considerations", () => {
       const date = new Date(dateStr);
       expect(date.getTime()).not.toBeNaN();
       expect(date.toUTCString()).toBeDefined();
-      console.log(`✅ Valid date: ${dateStr}`);
+      logger.debug(` Valid date: ${dateStr}`);
     }
     
     for (const dateStr of invalidDates) {
       const date = new Date(dateStr);
       // Invalid dates should either be NaN or handled gracefully
       if (isNaN(date.getTime())) {
-        console.log(`✅ Rejected invalid date: ${dateStr}`);
+        logger.debug(` Rejected invalid date: ${dateStr}`);
       } else {
-        console.log(`⚠️ Parsed questionable date: ${dateStr} -> ${date.toUTCString()}`);
+        logger.debug(` Parsed questionable date: ${dateStr} -> ${date.toUTCString()}`);
       }
     }
   });
@@ -457,14 +458,14 @@ describe("RFC 9458 - Section 6: Security Considerations", () => {
       const date = new Date(dateStr);
       const skew = Math.abs(now - date.getTime());
       expect(skew).toBeLessThanOrEqual(fiveMinutes);
-      console.log(`✅ Acceptable skew: ${skew}ms for ${dateStr}`);
+      logger.debug(` Acceptable skew: ${skew}ms for ${dateStr}`);
     }
     
     for (const dateStr of unacceptableDates) {
       const date = new Date(dateStr);
       const skew = Math.abs(now - date.getTime());
       expect(skew).toBeGreaterThan(fiveMinutes);
-      console.log(`✅ Rejected skew: ${skew}ms for ${dateStr}`);
+      logger.debug(` Rejected skew: ${skew}ms for ${dateStr}`);
     }
   });
 
@@ -492,7 +493,7 @@ describe("RFC 9458 - Section 6: Security Considerations", () => {
       }
     }
     
-    console.log(`✅ Perfect Forward Secrecy: ${sessions.length} unique ephemeral keys`);
+    logger.debug(` Perfect Forward Secrecy: ${sessions.length} unique ephemeral keys`);
   });
 });
 
@@ -507,7 +508,7 @@ describe("RFC 9458 - Section 9: Media Types", () => {
     const invalidHeaders = new Headers({ "content-type": "application/json" });
     expect(() => assertContentType(invalidHeaders, MediaTypes.OHTTP_KEYS)).toThrow();
     
-    console.log(`✅ OHTTP keys media type: ${MediaTypes.OHTTP_KEYS}`);
+    logger.debug(` OHTTP keys media type: ${MediaTypes.OHTTP_KEYS}`);
   });
 
   test("Section 9.2: message/ohttp-req media type", () => {
@@ -520,7 +521,7 @@ describe("RFC 9458 - Section 9: Media Types", () => {
     const invalidHeaders = new Headers({ "content-type": "application/json" });
     expect(() => assertContentType(invalidHeaders, MediaTypes.OHTTP_REQ)).toThrow();
     
-    console.log(`✅ OHTTP request media type: ${MediaTypes.OHTTP_REQ}`);
+    logger.debug(` OHTTP request media type: ${MediaTypes.OHTTP_REQ}`);
   });
 
   test("Section 9.3: message/ohttp-res media type", () => {
@@ -533,7 +534,7 @@ describe("RFC 9458 - Section 9: Media Types", () => {
     const invalidHeaders = new Headers({ "content-type": "application/json" });
     expect(() => assertContentType(invalidHeaders, MediaTypes.OHTTP_RES)).toThrow();
     
-    console.log(`✅ OHTTP response media type: ${MediaTypes.OHTTP_RES}`);
+    logger.debug(` OHTTP response media type: ${MediaTypes.OHTTP_RES}`);
   });
 
   test("Media type case sensitivity", () => {
@@ -550,9 +551,9 @@ describe("RFC 9458 - Section 9: Media Types", () => {
       
       try {
         assertContentType(headers, MediaTypes.OHTTP_KEYS);
-        console.log(`✅ Accepted case variation: ${mediaType}`);
+        logger.debug(` Accepted case variation: ${mediaType}`);
       } catch (error) {
-        console.log(`⚠️ Rejected case variation: ${mediaType} - ${(error as Error).message}`);
+        logger.debug(` Rejected case variation: ${mediaType} - ${(error as Error).message}`);
       }
     }
   });
@@ -578,7 +579,7 @@ describe("RFC 9458 - Problem Response Format", () => {
     // Verify URI format
     expect(problem.type).toMatch(/^https:\/\/iana\.org\/assignments\/http-problem-types#/);
     
-    console.log(`✅ Date problem response: ${problem.type}`);
+    logger.debug(` Date problem response: ${problem.type}`);
   });
 
   test("Section 9.5: OHTTP key problem type", () => {
@@ -600,7 +601,7 @@ describe("RFC 9458 - Problem Response Format", () => {
     // Verify URI format
     expect(problem.type).toMatch(/^https:\/\/iana\.org\/assignments\/http-problem-types#/);
     
-    console.log(`✅ OHTTP key problem response: ${problem.type}`);
+    logger.debug(` OHTTP key problem response: ${problem.type}`);
   });
 
   test("Problem response JSON schema compliance", () => {
@@ -633,7 +634,7 @@ describe("RFC 9458 - Problem Response Format", () => {
       expect(allowedKeys.includes(key)).toBe(true);
     }
     
-    console.log(`✅ Problem response schema compliance verified`);
+    logger.debug(` Problem response schema compliance verified`);
   });
 });
 
@@ -664,7 +665,7 @@ describe("RFC 9458 - Binary HTTP Integration", () => {
     expect(decoded.headers!["authorization"]).toBe("Bearer token123");
     expect(decoded.body).toEqual(request.body);
     
-    console.log(`✅ bHTTP request: ${encoded.length} bytes, ${Object.keys(decoded.headers!).length} headers`);
+    logger.debug(` bHTTP request: ${encoded.length} bytes, ${Object.keys(decoded.headers!).length} headers`);
   });
 
   test("RFC 9292 compliance: Response encoding", () => {
@@ -691,7 +692,7 @@ describe("RFC 9458 - Binary HTTP Integration", () => {
     expect(decoded.headers!["x-rpc-version"]).toBe("2.0");
     expect(decoded.body).toEqual(response.body);
     
-    console.log(`✅ bHTTP response: ${encoded.length} bytes, status ${decoded.status}`);
+    logger.debug(` bHTTP response: ${encoded.length} bytes, status ${decoded.status}`);
   });
 
   test("bHTTP edge cases: Empty and large payloads", () => {
@@ -723,6 +724,6 @@ describe("RFC 9458 - Binary HTTP Integration", () => {
     expect(largeDecoded.body).toEqual(largeBody);
     expect(largeEncoded.length).toBeGreaterThan(largeBody.length + 50); // Headers overhead
     
-    console.log(`✅ bHTTP edge cases: empty=${emptyEncoded.length}B, large=${largeEncoded.length}B`);
+    logger.debug(` bHTTP edge cases: empty=${emptyEncoded.length}B, large=${largeEncoded.length}B`);
   });
 });

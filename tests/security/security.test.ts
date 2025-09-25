@@ -9,6 +9,7 @@
  */
 
 import { test, expect, describe } from "bun:test";
+import { logger } from "../utils/test-logger.js";
 import { getDevConfig as getRelayConfig } from "../../apps/relay/src/env.js";
 import { getDevConfig as getGatewayConfig } from "../../apps/gateway/src/env.js";
 import { isTargetAllowed } from "../../apps/gateway/src/policy/allowlist.js";
@@ -152,7 +153,7 @@ describe("Security - Cryptographic Properties", () => {
       
     } catch (error) {
       // Expected with simplified implementation
-      console.log("Key derivation test: using simplified HPKE implementation");
+      logger.debug("Key derivation test: using simplified HPKE implementation");
       expect(error).toBeDefined();
     }
   });
@@ -175,7 +176,7 @@ describe("Security - Cryptographic Properties", () => {
       
     } catch (error) {
       // Expected with simplified implementation
-      console.log("Encryption test: using simplified HPKE implementation");
+      logger.debug("Encryption test: using simplified HPKE implementation");
       expect(error).toBeDefined();
     }
   });

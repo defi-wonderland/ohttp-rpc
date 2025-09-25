@@ -50,7 +50,7 @@ async function prompt(question: string, defaultValue?: string): Promise<string> 
  * Main setup function
  */
 async function main() {
-  console.log('🚀 OHTTP Gateway Setup');
+  console.log(' OHTTP Gateway Setup');
   console.log('======================');
   console.log('');
   
@@ -76,7 +76,7 @@ async function main() {
   }
   
   // Gather configuration
-  console.log('📡 Server Configuration');
+  console.log(' Server Configuration');
   const port = await prompt('Gateway port', '8788');
   
   console.log('');
@@ -86,17 +86,17 @@ async function main() {
   
   if (generateNewSeed.toLowerCase() !== 'n') {
     hpkeSeed = generateHpkeSeed();
-    console.log('✅ Generated secure HPKE seed');
+    console.log(' Generated secure HPKE seed');
   } else {
     hpkeSeed = await prompt('Enter HPKE seed (base64url, 32+ chars)');
     if (hpkeSeed.length < 32) {
-      console.error('❌ HPKE seed must be at least 32 characters');
+      console.error(' HPKE seed must be at least 32 characters');
       return;
     }
   }
   
   console.log('');
-  console.log('🎯 Policy Configuration');
+  console.log(' Policy Configuration');
   const allowedTargets = await prompt(
     'Allowed RPC targets (comma-separated)', 
     'https://mainnet.infura.io,https://eth.llamarpc.com'
@@ -105,7 +105,7 @@ async function main() {
   const maxInnerBytes = await prompt('Max request size (bytes)', '524288');
   
   console.log('');
-  console.log('⚙️ Advanced Configuration');
+  console.log('⚙ Advanced Configuration');
   const requireTls = await prompt('Require TLS for upstream? (Y/n)', 'y');
   const logLevel = await prompt('Log level (debug/info/warn/error)', 'info');
   
@@ -145,14 +145,14 @@ async function main() {
   writeFileSync(envPath, config);
   
   console.log('');
-  console.log('✅ Configuration saved to .env');
+  console.log(' Configuration saved to .env');
   console.log('');
-  console.log('🔒 Security Notes:');
+  console.log(' Security Notes:');
   console.log('  - Keep your HPKE seed secret and secure');
   console.log('  - Never commit .env to version control');
   console.log('  - Rotate keys periodically for enhanced security');
   console.log('');
-  console.log('🚀 Next Steps:');
+  console.log(' Next Steps:');
   console.log('  - Test configuration: bun run validate-config');
   console.log('  - Start in development: bun run start:dev');
   console.log('  - Start in production: bun run start');

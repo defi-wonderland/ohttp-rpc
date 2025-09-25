@@ -6,6 +6,7 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { logger } from "../utils/test-logger.js";
 import { ohttpJsonRpc } from "../../packages/sdk/src/fetch.js";
 
 // Import server components
@@ -24,7 +25,7 @@ interface TestServers {
 let servers: TestServers;
 
 beforeAll(async () => {
-  console.log("🚀 Starting Real RPC Integration test infrastructure...");
+  logger.debug(" Starting Real RPC Integration test infrastructure...");
   
   // Start Gateway Server with real RPC endpoints in ALLOWED_TARGETS
   const gatewayConfig = {
@@ -41,7 +42,7 @@ beforeAll(async () => {
   
   const gateway = createGatewayServer(gatewayConfig);
   await gateway.start();
-  console.log(`✅ Gateway server started on port ${gatewayConfig.GATEWAY_PORT}`);
+  logger.debug(` Gateway server started on port ${gatewayConfig.GATEWAY_PORT}`);
   
   // Start Relay Server
   const relayConfig = {
@@ -54,7 +55,7 @@ beforeAll(async () => {
   
   const relay = createRelayServer(relayConfig);
   relay.start();
-  console.log(`✅ Relay server started on port ${relayConfig.RELAY_PORT}`);
+  logger.debug(` Relay server started on port ${relayConfig.RELAY_PORT}`);
   
   // Give servers time to start
   await new Promise(resolve => setTimeout(resolve, 1000));
@@ -66,21 +67,21 @@ beforeAll(async () => {
     relayPort: relayConfig.RELAY_PORT
   };
   
-  console.log("🎯 Real RPC Integration test infrastructure ready!");
+  logger.debug(" Real RPC Integration test infrastructure ready!");
 });
 
 afterAll(async () => {
-  console.log("🧹 Cleaning up Real RPC Integration test infrastructure...");
+  logger.debug("🧹 Cleaning up Real RPC Integration test infrastructure...");
   
   if (servers) {
     await servers.gateway.close();
-    console.log("✅ Gateway server stopped");
+    logger.debug(" Gateway server stopped");
     
     await servers.relay.close();
-    console.log("✅ Relay server stopped");
+    logger.debug(" Relay server stopped");
   }
   
-  console.log("🎯 Real RPC Integration cleanup complete!");
+  logger.debug(" Real RPC Integration cleanup complete!");
 });
 
 describe("Real RPC Integration - Live Network Tests", () => {
@@ -89,7 +90,7 @@ describe("Real RPC Integration - Live Network Tests", () => {
     const relayUrl = `http://localhost:${servers.relayPort}/relay`;
     const targetRpcUrl = "https://eth.llamarpc.com";
     
-    console.log("📡 Making real getBlockNumber request...");
+    logger.debug("📡 Making real getBlockNumber request...");
     
     // Make real eth_blockNumber request
     const result = await ohttpJsonRpc(
@@ -109,7 +110,7 @@ describe("Real RPC Integration - Live Network Tests", () => {
     expect(blockNumber).toBeGreaterThan(18000000); // Should be well past this block by now
     expect(blockNumber).toBeLessThan(50000000); // Reasonable upper bound
     
-    console.log(`✅ Real getBlockNumber successful: ${result} (decimal: ${blockNumber.toLocaleString()})`);
+    logger.debug(` Real getBlockNumber successful: ${result} (decimal: ${blockNumber.toLocaleString()})`);
   });
   
   test("Real chainId request through OHTTP to eth.llamarpc.com", async () => {
@@ -117,7 +118,7 @@ describe("Real RPC Integration - Live Network Tests", () => {
     const relayUrl = `http://localhost:${servers.relayPort}/relay`;
     const targetRpcUrl = "https://eth.llamarpc.com";
     
-    console.log("📡 Making real chainId request...");
+    logger.debug("📡 Making real chainId request...");
     
     // Make real eth_chainId request
     const result = await ohttpJsonRpc(
@@ -132,7 +133,7 @@ describe("Real RPC Integration - Live Network Tests", () => {
     // Should be "0x1" for Ethereum mainnet
     expect(result).toBe("0x1");
     
-    console.log(`✅ Real chainId successful: ${result} (Ethereum Mainnet)`);
+    logger.debug(` Real chainId successful: ${result} (Ethereum Mainnet)`);
   });
   
   test("Real getBlockNumber with multiple approved endpoints", async () => {
@@ -144,7 +145,7 @@ describe("Real RPC Integration - Live Network Tests", () => {
       "https://rpc.ankr.com/eth"
     ];
     
-    console.log("📡 Testing multiple approved RPC endpoints...");
+    logger.debug("📡 Testing multiple approved RPC endpoints...");
     
     const results = [];
     
@@ -165,9 +166,9 @@ describe("Real RPC Integration - Live Network Tests", () => {
         expect(blockNumber).toBeGreaterThan(18000000);
         
         results.push({ endpoint, blockNumber, success: true });
-        console.log(`✅ ${endpoint}: ${result} (${blockNumber.toLocaleString()})`);
+        logger.debug(` ${endpoint}: ${result} (${blockNumber.toLocaleString()})`);
       } catch (error) {
-        console.warn(`⚠️  ${endpoint} failed: ${error}`);
+        console.warn(`  ${endpoint} failed: ${error}`);
         results.push({ endpoint, error: error.message, success: false });
       }
     }
@@ -176,7 +177,7 @@ describe("Real RPC Integration - Live Network Tests", () => {
     const successCount = results.filter(r => r.success).length;
     expect(successCount).toBeGreaterThan(0);
     
-    console.log(`✅ Multiple endpoints test: ${successCount}/${approvedEndpoints.length} successful`);
+    logger.debug(` Multiple endpoints test: ${successCount}/${approvedEndpoints.length} successful`);
   });
   
   test("Real request validation - block numbers should be close", async () => {
@@ -184,7 +185,7 @@ describe("Real RPC Integration - Live Network Tests", () => {
     const relayUrl = `http://localhost:${servers.relayPort}/relay`;
     const targetRpcUrl = "https://eth.llamarpc.com";
     
-    console.log("📡 Making multiple block number requests to validate consistency...");
+    logger.debug("📡 Making multiple block number requests to validate consistency...");
     
     // Make two requests quickly
     const [result1, result2] = await Promise.all([
@@ -199,7 +200,7 @@ describe("Real RPC Integration - Live Network Tests", () => {
     const blockDiff = Math.abs(block1 - block2);
     expect(blockDiff).toBeLessThanOrEqual(5); // Should be within 5 blocks
     
-    console.log(`✅ Block consistency check: ${result1} and ${result2} (diff: ${blockDiff})`);
+    logger.debug(` Block consistency check: ${result1} and ${result2} (diff: ${blockDiff})`);
   });
   
   test("Error handling with unauthorized endpoint", async () => {
@@ -207,7 +208,7 @@ describe("Real RPC Integration - Live Network Tests", () => {
     const relayUrl = `http://localhost:${servers.relayPort}/relay`;
     const unauthorizedUrl = "https://cloudflare-eth.com"; // Not in ALLOWED_TARGETS
     
-    console.log("🔒 Testing unauthorized endpoint rejection...");
+    logger.debug(" Testing unauthorized endpoint rejection...");
     
     try {
       await ohttpJsonRpc(
@@ -225,7 +226,7 @@ describe("Real RPC Integration - Live Network Tests", () => {
       // Should get a target not allowed error (could be 403 or "Target not allowed")
       expect(error).toBeDefined();
       expect(error.message).toMatch(/(Target not allowed|403|Forbidden)/i);
-      console.log(`✅ Unauthorized endpoint correctly rejected: ${error.message}`);
+      logger.debug(` Unauthorized endpoint correctly rejected: ${error.message}`);
     }
   });
   
@@ -234,7 +235,7 @@ describe("Real RPC Integration - Live Network Tests", () => {
     const relayUrl = `http://localhost:${servers.relayPort}/relay`;
     const targetRpcUrl = "https://eth.llamarpc.com";
     
-    console.log("⚡ Running performance test with real endpoint...");
+    logger.debug(" Running performance test with real endpoint...");
     
     const startTime = Date.now();
     const requestCount = 3; // Keep it reasonable for real network
@@ -267,6 +268,6 @@ describe("Real RPC Integration - Live Network Tests", () => {
     // Should complete within reasonable time (allow more time for real network)
     expect(avgLatency).toBeLessThan(10000); // 10 seconds average
     
-    console.log(`✅ Performance test: ${requestCount} requests in ${duration}ms (${avgLatency.toFixed(0)}ms avg)`);
+    logger.debug(` Performance test: ${requestCount} requests in ${duration}ms (${avgLatency.toFixed(0)}ms avg)`);
   });
 });

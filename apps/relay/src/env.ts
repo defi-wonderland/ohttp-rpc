@@ -30,7 +30,7 @@ function loadEnvFile(): void {
         }
       }
     } catch (error) {
-      console.warn('Warning: Could not load .env file:', error);
+      logger.warn('Warning: Could not load .env file:', error);
     }
   }
 }
@@ -105,8 +105,9 @@ const envSchema = z.object({
     .max(10000, "Rate limit must not exceed 10000 requests per minute")
     .default(60),
   
-  // Logging level
-  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  // Logging configuration
+  LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error"]).default("info"),
+  LOG_FORMAT: z.enum(["text", "json"]).default("text"),
 });
 
 /**
@@ -131,19 +132,19 @@ export function loadConfig(): RelayConfig {
     
     return config;
   } catch (error) {
-    console.error("❌ Invalid environment configuration:");
+    logger.error("Invalid environment configuration:");
     if (error instanceof z.ZodError) {
       for (const issue of error.issues) {
-        console.error(`  ${issue.path.join('.')}: ${issue.message}`);
+        logger.error(`  ${issue.path.join('.')}: ${issue.message}`);
       }
     } else {
-      console.error(`  ${error}`);
+      logger.error(`  ${error}`);
     }
-    console.error("");
-    console.error("💡 Tips:");
-    console.error("  - Copy env.example to .env and update values");
-    console.error("  - Ensure GATEWAY_URL is set correctly");
-    console.error("  - Check configuration documentation in README");
+    logger.error("");
+    logger.error("Tips:");
+    logger.error("  - Copy env.example to .env and update values");
+    logger.error("  - Ensure GATEWAY_URL is set correctly");
+    logger.error("  - Check configuration documentation in README");
     process.exit(1);
   }
 }
@@ -189,18 +190,18 @@ function validateProductionConfig(config: RelayConfig): void {
   
   // Display warnings
   if (warnings.length > 0) {
-    console.warn("⚠️  Production Configuration Warnings:");
+    logger.warn("Production Configuration Warnings:");
     for (const warning of warnings) {
-      console.warn(`  ${warning}`);
+      logger.warn(`  ${warning}`);
     }
-    console.warn("");
+    logger.warn("");
   }
   
   // Fail on errors
   if (errors.length > 0) {
-    console.error("❌ Production Configuration Errors:");
+    logger.error("Production Configuration Errors:");
     for (const error of errors) {
-      console.error(`  ${error}`);
+      logger.error(`  ${error}`);
     }
     throw new Error("Production configuration validation failed");
   }
@@ -219,5 +220,6 @@ export function getDevConfig(): RelayConfig {
     TOTAL_TIMEOUT_MS: 15000,
     RATE_LIMIT_RPM: 60,
     LOG_LEVEL: "debug",
+    LOG_FORMAT: "text",
   };
 }

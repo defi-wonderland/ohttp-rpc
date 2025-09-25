@@ -101,3 +101,31 @@ export type EIP1193RequestArguments = {
   method: string;
   params?: unknown[] | Record<string, unknown>;
 };
+
+/**
+ * Logger types
+ */
+export type LogLevel = 'error' | 'warn' | 'info' | 'debug' | 'trace';
+
+export type LogContext = {
+  component?: string;
+  requestId?: string;
+  userId?: string;
+  [key: string]: any;
+};
+
+export type LogEntry = {
+  level: LogLevel;
+  message: string;
+  timestamp: string;
+  context?: LogContext;
+  error?: Error;
+};
+
+export type LoggerConfig = {
+  level: LogLevel;
+  enableTimestamp: boolean;
+  enableContext: boolean;
+  format: 'json' | 'text';
+  destination: 'console' | 'file' | 'none';
+};

@@ -13,9 +13,10 @@ import { createHpkeEngine } from "../../packages/hpke-engine/src/index.js";
 import { encodeOhttpKeys } from "../../packages/ohttp-core/src/ohttp.js";
 import { encodeRequest as encodeBhttp, decodeRequest as decodeBhttp } from "../../packages/ohttp-core/src/bhttp.js";
 import type { OhttpKeyConfig } from "../../packages/shared/src/types.js";
+import { logger } from "../utils/test-logger.js";
 
 test("SDK Integration - Key Configuration Loading", async () => {
-  console.log("🔑 Testing SDK key configuration loading...");
+  logger.debug(" Testing SDK key configuration loading...");
   
   // Create a mock key configuration
   const hpkeEngine = createHpkeEngine();
@@ -37,11 +38,11 @@ test("SDK Integration - Key Configuration Loading", async () => {
   const client = await OhttpClient.fromKeyConfigBytes(keyConfigBytes);
   expect(client).toBeDefined();
   
-  console.log("✅ SDK successfully loaded key configuration");
+  logger.debug(" SDK successfully loaded key configuration");
 });
 
 test("bHTTP Integration - Request/Response Encoding", async () => {
-  console.log("📦 Testing bHTTP message encoding/decoding integration...");
+  logger.debug(" Testing bHTTP message encoding/decoding integration...");
   
   // Create a JSON-RPC request
   const jsonRpcRequest = {
@@ -74,11 +75,11 @@ test("bHTTP Integration - Request/Response Encoding", async () => {
   expect(decodedBody.method).toBe("eth_getBalance");
   expect(decodedBody.id).toBe(1);
   
-  console.log("✅ bHTTP encoding/decoding integration successful");
+  logger.debug(" bHTTP encoding/decoding integration successful");
 });
 
 test("Mock RPC Integration - SDK to RPC Communication", async () => {
-  console.log("🔗 Testing SDK to Mock RPC communication...");
+  logger.debug(" Testing SDK to Mock RPC communication...");
   
   const mockRpc = new MockRpcServer(3342);
   const rpcServer = mockRpc.start();
@@ -102,7 +103,7 @@ test("Mock RPC Integration - SDK to RPC Communication", async () => {
     expect(result.id).toBe(1);
     expect(result.result).toBeDefined();
     
-    console.log("✅ SDK to Mock RPC communication successful");
+    logger.debug(" SDK to Mock RPC communication successful");
     
   } finally {
     mockRpc.stop();
@@ -110,7 +111,7 @@ test("Mock RPC Integration - SDK to RPC Communication", async () => {
 });
 
 test("HPKE Integration - Key Generation and Encryption Flow", async () => {
-  console.log("🔐 Testing HPKE cryptographic integration...");
+  logger.debug(" Testing HPKE cryptographic integration...");
   
   const hpkeEngine = createHpkeEngine();
   
@@ -136,19 +137,19 @@ test("HPKE Integration - Key Generation and Encryption Flow", async () => {
     // In production, this would return proper encrypted data
     expect(encryptResult).toBeDefined();
     
-    console.log("✅ HPKE key generation and interface testing successful");
-    console.log("ℹ️  Note: Using simplified HPKE implementation for MVP demo");
+    logger.debug(" HPKE key generation and interface testing successful");
+    logger.debug("  Note: Using simplified HPKE implementation for MVP demo");
     
   } catch (error) {
     // This is expected with the current simplified implementation
-    console.log("ℹ️  HPKE simplified implementation detected (expected for MVP)");
-    console.log("✅ HPKE interface and error handling working correctly");
+    logger.debug("  HPKE simplified implementation detected (expected for MVP)");
+    logger.debug(" HPKE interface and error handling working correctly");
     expect(error).toBeDefined();
   }
 });
 
 test("Error Handling Integration", async () => {
-  console.log("⚠️ Testing integrated error handling...");
+  logger.debug(" Testing integrated error handling...");
   
   // Test 1: Invalid key configuration
   try {
@@ -156,7 +157,7 @@ test("Error Handling Integration", async () => {
     expect(false).toBe(true); // Should not reach here
   } catch (error) {
     expect(error).toBeDefined();
-    console.log("   ✅ Correctly handled invalid key configuration");
+    logger.debug("    Correctly handled invalid key configuration");
   }
   
   // Test 2: Mock RPC error responses
@@ -179,34 +180,34 @@ test("Error Handling Integration", async () => {
     const result = await response.json();
     expect(result.error).toBeDefined();
     expect(result.error.code).toBe(-32601); // Method not found
-    console.log("   ✅ Correctly handled RPC method error");
+    logger.debug("    Correctly handled RPC method error");
     
   } finally {
     mockRpc.stop();
   }
   
-  console.log("✅ Error handling integration tests completed");
+  logger.debug(" Error handling integration tests completed");
 });
 
 test("Complete Component Integration Demo", async () => {
-  console.log("🎯 Demonstrating complete component integration...");
+  logger.debug(" Demonstrating complete component integration...");
   
   // This test shows how all the working components fit together
   const steps = [
-    "✅ HPKE key generation and encryption",
-    "✅ OHTTP key configuration encoding/parsing", 
-    "✅ bHTTP message encoding/decoding",
-    "✅ SDK client initialization",
-    "✅ Mock RPC server communication",
-    "✅ Error handling throughout the stack",
-    "⚠️ Relay server (needs production crypto)",
-    "⚠️ Gateway server (needs production crypto)",
-    "⚠️ End-to-end OHTTP flow (needs server fixes)"
+    " HPKE key generation and encryption",
+    " OHTTP key configuration encoding/parsing", 
+    " bHTTP message encoding/decoding",
+    " SDK client initialization",
+    " Mock RPC server communication",
+    " Error handling throughout the stack",
+    " Relay server (needs production crypto)",
+    " Gateway server (needs production crypto)",
+    " End-to-end OHTTP flow (needs server fixes)"
   ];
   
-  console.log("📊 Integration Status:");
+  logger.debug(" Integration Status:");
   for (const step of steps) {
-    console.log(`   ${step}`);
+    logger.debug(`   ${step}`);
   }
   
   // Verify we have the core building blocks
@@ -229,6 +230,6 @@ test("Complete Component Integration Demo", async () => {
   expect(client).toBeDefined();
   expect(keyConfigBytes.length).toBeGreaterThan(0);
   
-  console.log("✅ All core components integrate successfully!");
-  console.log("🚀 Ready for production crypto implementation!");
+  logger.debug(" All core components integrate successfully!");
+  logger.debug(" Ready for production crypto implementation!");
 });

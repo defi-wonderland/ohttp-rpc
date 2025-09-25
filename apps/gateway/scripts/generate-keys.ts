@@ -68,7 +68,7 @@ async function main() {
         console.log('Add this to your .env file:');
         console.log(`HPKE_SEED=${seed}`);
         console.log('');
-        console.log('⚠️  SECURITY WARNING:');
+        console.log('  SECURITY WARNING:');
         console.log('- Keep this seed secret and secure');
         console.log('- Rotate periodically for security');
         console.log('- Never commit this to version control');
@@ -84,9 +84,9 @@ async function main() {
         const isValid = validateHpkeSeed(seedToValidate);
         
         if (isValid) {
-          console.log('✅ Valid HPKE seed');
+          console.log(' Valid HPKE seed');
         } else {
-          console.log('❌ Invalid HPKE seed');
+          console.log(' Invalid HPKE seed');
           console.log('Expected: 32-byte base64url encoded string');
           process.exit(1);
         }
@@ -108,7 +108,7 @@ async function main() {
     console.log('Environment variable:');
     console.log(`HPKE_SEED=${seed}`);
     console.log('');
-    console.log('🔒 Security Notes:');
+    console.log(' Security Notes:');
     console.log('- This seed is used to generate your gateway\'s private keys');
     console.log('- Keep it secret and secure (never commit to git)');
     console.log('- Rotate periodically for enhanced security');

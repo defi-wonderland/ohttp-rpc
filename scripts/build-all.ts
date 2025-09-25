@@ -34,7 +34,7 @@ async function buildPackages() {
 }
 
 async function buildApps() {
-  console.log("🏗️  Building applications...");
+  console.log("🏗  Building applications...");
   
   for (const app of apps) {
     console.log(`  Building ${app}...`);
@@ -49,7 +49,7 @@ async function buildApps() {
 }
 
 async function typecheck() {
-  console.log("🔍 Type checking...");
+  console.log(" Type checking...");
   try {
     await $`bun run typecheck`.quiet();
     console.log("  ✓ Type checking passed");
@@ -66,7 +66,7 @@ async function main() {
   await buildPackages();
   await buildApps();
   
-  console.log("\n🎉 Build completed successfully!");
+  console.log("\n Build completed successfully!");
 }
 
 if (import.meta.main) {

@@ -10,6 +10,7 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { logger } from "../utils/test-logger.js";
 import { createHpkeEngine } from "../../packages/hpke-engine/src/index.js";
 import { OhttpClient } from "../../packages/sdk/src/client.js";
 import { ohttpFetch, ohttpJsonRpc } from "../../packages/sdk/src/fetch.js";
@@ -104,9 +105,9 @@ beforeAll(async () => {
     };
     
     mockKeyConfig = encodeOhttpKeys([keyConfig]);
-    console.log("✅ Global mock key config initialized:", mockKeyConfig.length, "bytes");
+    logger.debug(" Global mock key config initialized:", mockKeyConfig.length, "bytes");
   } catch (error) {
-    console.error("❌ Failed to initialize global mock key config:", error);
+    logger.error(" Failed to initialize global mock key config:", error);
     throw error;
   }
 });
@@ -146,7 +147,7 @@ describe("Integration - Service Degradation Scenarios", () => {
     } catch (error) {
       expect(error).toBeDefined();
       expect((error as Error).message).toContain("Connection refused");
-      console.log(`✅ Gateway unavailable error handled: ${(error as Error).message}`);
+      logger.debug(` Gateway unavailable error handled: ${(error as Error).message}`);
     }
   });
 
@@ -193,11 +194,11 @@ describe("Integration - Service Degradation Scenarios", () => {
           { fetchFn: mockFetch, timeoutMs: 1000 }
         );
         
-        console.log(`✅ Request succeeded on attempt ${i + 1}`);
+        logger.debug(` Request succeeded on attempt ${i + 1}`);
         break;
         
       } catch (error) {
-        console.log(`⚠️ Attempt ${i + 1} failed: ${(error as Error).message}`);
+        logger.debug(` Attempt ${i + 1} failed: ${(error as Error).message}`);
         
         if (i === maxAttempts - 1) {
           expect(error).toBeDefined();
@@ -206,7 +207,7 @@ describe("Integration - Service Degradation Scenarios", () => {
     }
     
     expect(attemptCount).toBeGreaterThan(0);
-    console.log(`✅ Intermittent failures handled: ${attemptCount} attempts made`);
+    logger.debug(` Intermittent failures handled: ${attemptCount} attempts made`);
   });
 
   test("Upstream RPC service degradation", async () => {
@@ -253,16 +254,16 @@ describe("Integration - Service Degradation Scenarios", () => {
         );
         
         if (scenario.expectTimeout || scenario.expectError) {
-          console.log(`⚠️ Expected failure for ${scenario.name} but got result: ${result}`);
+          logger.debug(` Expected failure for ${scenario.name} but got result: ${result}`);
         } else {
-          console.log(`✅ ${scenario.name} handled gracefully: ${result}`);
+          logger.debug(` ${scenario.name} handled gracefully: ${result}`);
         }
         
       } catch (error) {
         if (scenario.expectTimeout || scenario.expectError) {
-          console.log(`✅ ${scenario.name} properly failed: ${(error as Error).message}`);
+          logger.debug(` ${scenario.name} properly failed: ${(error as Error).message}`);
         } else {
-          console.log(`⚠️ Unexpected failure for ${scenario.name}: ${(error as Error).message}`);
+          logger.debug(` Unexpected failure for ${scenario.name}: ${(error as Error).message}`);
         }
         
         expect(error).toBeDefined();
@@ -328,8 +329,8 @@ describe("Integration - Service Degradation Scenarios", () => {
     expect(successful.length).toBeGreaterThanOrEqual(0);
     expect(failed.length).toBeGreaterThan(0);
     
-    console.log(`✅ Network partition handled: ${successful.length}/${requestCount} succeeded`);
-    console.log(`   Failed requests: ${failed.length} (${failed.map(f => f.error).join(', ')})`);
+    logger.debug(` Network partition handled: ${successful.length}/${requestCount} succeeded`);
+    logger.debug(`   Failed requests: ${failed.length} (${failed.map(f => f.error).join(', ')})`);
   });
 });
 
@@ -395,7 +396,7 @@ describe("Integration - Error Propagation", () => {
           { fetchFn: mockFetch, timeoutMs: 2000 }
         );
         
-        console.log(`⚠️ Expected error for ${scenario.component} but got result: ${result}`);
+        logger.debug(` Expected error for ${scenario.component} but got result: ${result}`);
         
       } catch (error) {
         expect(error).toBeDefined();
@@ -403,7 +404,7 @@ describe("Integration - Error Propagation", () => {
         const errorMessage = (error as Error).message;
         const errorName = (error as any).constructor.name;
         
-        console.log(`✅ ${scenario.component} error propagated: ${errorName} - ${errorMessage}`);
+        logger.debug(` ${scenario.component} error propagated: ${errorName} - ${errorMessage}`);
         
         // Verify error type matches expectation (allow for bHTTP decapsulation errors)
         if (scenario.expectRpcError) {
@@ -472,7 +473,7 @@ describe("Integration - Error Propagation", () => {
     expect(errors.length).toBeGreaterThan(0);
     expect(relayRequests).toBeGreaterThan(0);
     
-    console.log(`✅ Cascading failure prevention: ${errors.length}/10 failed, relay processed ${relayRequests} requests`);
+    logger.debug(` Cascading failure prevention: ${errors.length}/10 failed, relay processed ${relayRequests} requests`);
   });
 
   test("Graceful degradation modes", async () => {
@@ -563,10 +564,10 @@ describe("Integration - Error Propagation", () => {
           );
         }
         
-        console.log(`✅ ${mode.name} successful after ${attempts} attempts`);
+        logger.debug(` ${mode.name} successful after ${attempts} attempts`);
         
       } catch (error) {
-        console.log(`⚠️ ${mode.name} failed: ${(error as Error).message} (${attempts} attempts)`);
+        logger.debug(` ${mode.name} failed: ${(error as Error).message} (${attempts} attempts)`);
         expect(error).toBeDefined();
       }
     }
@@ -640,12 +641,12 @@ describe("Integration - Recovery Mechanisms", () => {
           );
           
           recovered = true;
-          console.log(`✅ Service recovered after ${i + 1} health checks: ${result}`);
+          logger.debug(` Service recovered after ${i + 1} health checks: ${result}`);
           break;
         }
         
       } catch (error) {
-        console.log(`⚠️ Health check ${i + 1} failed: ${(error as Error).message}`);
+        logger.debug(` Health check ${i + 1} failed: ${(error as Error).message}`);
       }
       
       // Wait before next health check
@@ -655,7 +656,7 @@ describe("Integration - Recovery Mechanisms", () => {
     // In test environment, recovery may not always succeed due to mock limitations
     expect(typeof recovered).toBe('boolean');
     expect(healthCheckCount).toBeGreaterThanOrEqual(3);
-    console.log(`✅ Recovery detection: ${healthCheckCount} health checks, recovered=${recovered}`);
+    logger.debug(` Recovery detection: ${healthCheckCount} health checks, recovered=${recovered}`);
   });
 
   test("Connection pool recovery", async () => {
@@ -732,7 +733,7 @@ describe("Integration - Recovery Mechanisms", () => {
     expect(successful.length).toBeGreaterThanOrEqual(0);
     expect(finalHealthy).toBeGreaterThan(0);
     
-    console.log(`✅ Connection pool recovery: ${successful.length}/${testRequests} successful, ${finalHealthy}/${connectionPool.total} healthy`);
+    logger.debug(` Connection pool recovery: ${successful.length}/${testRequests} successful, ${finalHealthy}/${connectionPool.total} healthy`);
   });
 
   test("State synchronization after partition", async () => {
@@ -814,13 +815,13 @@ describe("Integration - Recovery Mechanisms", () => {
           );
           
           synchronized = true;
-          console.log(`✅ State synchronized after ${i + 1} attempts: ${result}`);
-          console.log(`   Node states: v${syncData.node1.version} - ${syncData.node1.data}`);
+          logger.debug(` State synchronized after ${i + 1} attempts: ${result}`);
+          logger.debug(`   Node states: v${syncData.node1.version} - ${syncData.node1.data}`);
           break;
         }
         
       } catch (error) {
-        console.log(`⚠️ Sync attempt ${i + 1} failed: ${(error as Error).message}`);
+        logger.debug(` Sync attempt ${i + 1} failed: ${(error as Error).message}`);
       }
       
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -831,7 +832,7 @@ describe("Integration - Recovery Mechanisms", () => {
     expect(syncAttempts).toBeGreaterThanOrEqual(3);
     expect(nodeStates.node1.version).toBe(nodeStates.node2.version);
     
-    console.log(`✅ State synchronization: ${syncAttempts} attempts, versions=${nodeStates.node1.version}`);
+    logger.debug(` State synchronization: ${syncAttempts} attempts, versions=${nodeStates.node1.version}`);
   });
 });
 
@@ -901,10 +902,10 @@ describe("Integration - Load and Stress Testing", () => {
     // expect(successRate).toBeGreaterThan(80); // Disabled for test environment with mock failures
     expect(avgLatency).toBeLessThan(1000); // Average under 1 second
     
-    console.log(`✅ Load test: ${concurrentRequests} concurrent requests`);
-    console.log(`   Success rate: ${successRate.toFixed(1)}% (${successCount}/${concurrentRequests})`);
-    console.log(`   Duration: ${duration}ms, Avg latency: ${avgLatency.toFixed(1)}ms`);
-    console.log(`   Errors: ${errorCount} (${((errorCount / concurrentRequests) * 100).toFixed(1)}%)`);
+    logger.debug(` Load test: ${concurrentRequests} concurrent requests`);
+    logger.debug(`   Success rate: ${successRate.toFixed(1)}% (${successCount}/${concurrentRequests})`);
+    logger.debug(`   Duration: ${duration}ms, Avg latency: ${avgLatency.toFixed(1)}ms`);
+    logger.debug(`   Errors: ${errorCount} (${((errorCount / concurrentRequests) * 100).toFixed(1)}%)`);
   });
 
   test("Memory pressure handling", async () => {
@@ -921,7 +922,7 @@ describe("Integration - Load and Stress Testing", () => {
       const pressureMemory = process.memoryUsage().heapUsed;
       const memoryIncrease = pressureMemory - initialMemory;
       
-      console.log(`✅ Memory pressure created: ${(memoryIncrease / 1024 / 1024).toFixed(2)}MB`);
+      logger.debug(` Memory pressure created: ${(memoryIncrease / 1024 / 1024).toFixed(2)}MB`);
       
       // Test system behavior under memory pressure
       const mockFetch = async (url: string, init?: RequestInit) => {
@@ -967,7 +968,7 @@ describe("Integration - Load and Stress Testing", () => {
       // In test environment with mock failures, we may have 0 successes
       expect(successful.length).toBeGreaterThanOrEqual(0);
       
-      console.log(`✅ Memory pressure test: ${successful.length}/10 requests succeeded`);
+      logger.debug(` Memory pressure test: ${successful.length}/10 requests succeeded`);
       
     } finally {
       // Clean up memory ballast
@@ -979,7 +980,7 @@ describe("Integration - Load and Stress Testing", () => {
       }
       
       const finalMemory = process.memoryUsage().heapUsed;
-      console.log(`✅ Memory cleanup: final usage ${(finalMemory / 1024 / 1024).toFixed(2)}MB`);
+      logger.debug(` Memory cleanup: final usage ${(finalMemory / 1024 / 1024).toFixed(2)}MB`);
     }
   });
 });

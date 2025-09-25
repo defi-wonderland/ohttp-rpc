@@ -15,6 +15,10 @@ export type {
   JsonRpcRequest,
   JsonRpcResponse,
   EIP1193RequestArguments,
+  LogLevel,
+  LogContext,
+  LogEntry,
+  LoggerConfig,
 } from "./types.js";
 
 // Export all constants
@@ -33,3 +37,12 @@ export {
   HTTP_STATUS,
   OHTTP_PROBLEM_TYPES,
 } from "./constants.js";
+
+// Export logger
+export {
+  Logger,
+  createLogger,
+  createLoggerFromEnv,
+  createTestLogger,
+  logger,
+} from "./logger.js";

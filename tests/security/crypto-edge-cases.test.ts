@@ -10,6 +10,7 @@
  */
 
 import { test, expect, describe, beforeEach, afterEach } from "bun:test";
+import { logger } from "../utils/test-logger.js";
 import { createHpkeEngine, WebCryptoHpkeEngine } from "../../packages/hpke-engine/src/index.js";
 import { GatewayHpkeManager } from "../../apps/gateway/src/crypto/hpke.js";
 import { zeroizeBytes, deriveKeyMaterial, generateSecureRandom } from "../../apps/gateway/src/crypto/zeroize.js";
@@ -48,7 +49,7 @@ describe("Crypto - HPKE Engine Edge Cases", () => {
     const memoryGrowth = endMemory - startMemory;
     expect(memoryGrowth).toBeLessThan(50 * 1024 * 1024); // Less than 50MB
     
-    console.log(`✅ Generated ${keys.length} unique keys, memory growth: ${(memoryGrowth / 1024 / 1024).toFixed(2)}MB`);
+    logger.debug(` Generated ${keys.length} unique keys, memory growth: ${(memoryGrowth / 1024 / 1024).toFixed(2)}MB`);
   });
 
   test("Key derivation with malformed seeds", async () => {
@@ -70,12 +71,12 @@ describe("Crypto - HPKE Engine Edge Cases", () => {
         expect(keyPair.publicKey.bytes.length).toBeGreaterThan(0);
         expect(keyPair.privateKey.bytes.length).toBeGreaterThan(0);
         
-        console.log(`✅ Handled seed length ${seed.length} gracefully`);
+        logger.debug(` Handled seed length ${seed.length} gracefully`);
         
       } catch (error) {
         // Some malformed seeds should be rejected
         expect(error).toBeInstanceOf(Error);
-        console.log(`✅ Rejected malformed seed length ${seed.length}: ${(error as Error).message}`);
+        logger.debug(` Rejected malformed seed length ${seed.length}: ${(error as Error).message}`);
       }
     }
   });
@@ -116,11 +117,11 @@ describe("Crypto - HPKE Engine Edge Cases", () => {
         );
         
         expect(openResult.pt).toEqual(testCase.plaintext);
-        console.log(`✅ HPKE seal/open successful for ${testCase.name}`);
+        logger.debug(` HPKE seal/open successful for ${testCase.name}`);
         
       } catch (error) {
         // Some edge cases might be rejected by the simplified implementation
-        console.log(`⚠️ HPKE ${testCase.name} failed (expected with simplified implementation): ${(error as Error).message}`);
+        logger.debug(` HPKE ${testCase.name} failed (expected with simplified implementation): ${(error as Error).message}`);
       }
     }
   });
@@ -146,10 +147,10 @@ describe("Crypto - HPKE Engine Edge Cases", () => {
       expect(open1.pt).toEqual(plaintext1);
       expect(open2.pt).toEqual(plaintext2);
       
-      console.log("✅ HPKE context isolation verified");
+      logger.debug(" HPKE context isolation verified");
       
     } catch (error) {
-      console.log(`⚠️ HPKE context test failed (expected with simplified implementation): ${(error as Error).message}`);
+      logger.debug(` HPKE context test failed (expected with simplified implementation): ${(error as Error).message}`);
     }
   });
 
@@ -167,10 +168,10 @@ describe("Crypto - HPKE Engine Edge Cases", () => {
     try {
       await hpkeEngine.sealBase(corruptedPublicKey, null, plaintext);
       // If it succeeds, that's also valid behavior
-      console.log("✅ Handled corrupted public key gracefully");
+      logger.debug(" Handled corrupted public key gracefully");
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
-      console.log(`✅ Rejected corrupted public key: ${(error as Error).message}`);
+      logger.debug(` Rejected corrupted public key: ${(error as Error).message}`);
     }
     
     // Test with corrupted ciphertext
@@ -192,12 +193,12 @@ describe("Crypto - HPKE Engine Edge Cases", () => {
       // Should either fail or return corrupted data
       if (openResult.pt.length > 0) {
         expect(openResult.pt).not.toEqual(plaintext);
-        console.log("✅ Corrupted ciphertext produced different plaintext");
+        logger.debug(" Corrupted ciphertext produced different plaintext");
       }
       
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
-      console.log(`✅ Rejected corrupted ciphertext: ${(error as Error).message}`);
+      logger.debug(` Rejected corrupted ciphertext: ${(error as Error).message}`);
     }
   });
 
@@ -229,15 +230,15 @@ describe("Crypto - HPKE Engine Edge Cases", () => {
       zeroizeBytes(openResult.pt);
       expect(openResult.pt.every(b => b === 0)).toBe(true);
       
-      console.log("✅ Memory safety and zeroization verified");
+      logger.debug(" Memory safety and zeroization verified");
       
     } catch (error) {
-      console.log(`⚠️ Memory safety test limited by simplified implementation: ${(error as Error).message}`);
+      logger.debug(` Memory safety test limited by simplified implementation: ${(error as Error).message}`);
       
       // Still test zeroization
       zeroizeBytes(sensitiveData);
       expect(sensitiveData.every(b => b === 0)).toBe(true);
-      console.log("✅ Zeroization function works correctly");
+      logger.debug(" Zeroization function works correctly");
     }
   });
 });
@@ -266,11 +267,11 @@ describe("Crypto - Key Management Edge Cases", () => {
         expect(publicKey).toBeDefined();
         expect(publicKey.bytes.length).toBeGreaterThan(0);
         
-        console.log(`✅ Handled seed length ${seed.length} gracefully`);
+        logger.debug(` Handled seed length ${seed.length} gracefully`);
         
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
-        console.log(`✅ Rejected invalid seed length ${seed.length}: ${(error as Error).message}`);
+        logger.debug(` Rejected invalid seed length ${seed.length}: ${(error as Error).message}`);
       }
     }
   });
@@ -290,11 +291,11 @@ describe("Crypto - Key Management Edge Cases", () => {
       const publicKey = hpkeManager.getPublicKey();
       expect(publicKey).toBeDefined();
       
-      console.log("✅ Concurrent key initialization handled gracefully");
+      logger.debug(" Concurrent key initialization handled gracefully");
       
     } catch (error) {
       // Some level of failure is acceptable for concurrent operations
-      console.log(`⚠️ Concurrent initialization failed (acceptable): ${(error as Error).message}`);
+      logger.debug(` Concurrent initialization failed (acceptable): ${(error as Error).message}`);
     }
   });
 
@@ -317,10 +318,10 @@ describe("Crypto - Key Management Edge Cases", () => {
       // Key should have changed
       expect(newPublicKey.bytes).not.toEqual(originalPublicKey.bytes);
       
-      console.log("✅ Key manager state update successful");
+      logger.debug(" Key manager state update successful");
       
     } catch (error) {
-      console.log(`⚠️ State corruption recovery test limited: ${(error as Error).message}`);
+      logger.debug(` State corruption recovery test limited: ${(error as Error).message}`);
     }
   });
 
@@ -359,7 +360,7 @@ describe("Crypto - Key Management Edge Cases", () => {
     // Memory growth should be reasonable
     expect(memoryGrowth).toBeLessThan(100 * 1024 * 1024); // Less than 100MB
     
-    console.log(`✅ Memory cleanup: growth ${(memoryGrowth / 1024 / 1024).toFixed(2)}MB after 50 operations`);
+    logger.debug(` Memory cleanup: growth ${(memoryGrowth / 1024 / 1024).toFixed(2)}MB after 50 operations`);
   });
 });
 
@@ -379,11 +380,11 @@ describe("Crypto - Key Configuration Edge Cases", () => {
         
         // If parsing succeeds, verify the result
         expect(Array.isArray(parsed)).toBe(true);
-        console.log(`✅ Parsed malformed key doc of length ${keyDoc.length} gracefully`);
+        logger.debug(` Parsed malformed key doc of length ${keyDoc.length} gracefully`);
         
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
-        console.log(`✅ Rejected malformed key doc length ${keyDoc.length}: ${(error as Error).message}`);
+        logger.debug(` Rejected malformed key doc length ${keyDoc.length}: ${(error as Error).message}`);
       }
     }
   });
@@ -414,11 +415,11 @@ describe("Crypto - Key Configuration Edge Cases", () => {
         const parsed = parseOhttpKeys(encoded);
         expect(parsed.length).toBe(1);
         
-        console.log(`✅ Handled ${config.desc} gracefully`);
+        logger.debug(` Handled ${config.desc} gracefully`);
         
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
-        console.log(`✅ Rejected ${config.desc}: ${(error as Error).message}`);
+        logger.debug(` Rejected ${config.desc}: ${(error as Error).message}`);
       }
     }
   });
@@ -463,10 +464,10 @@ describe("Crypto - Key Configuration Edge Cases", () => {
         expect(parsedConfig.keyId).toEqual(partialConfig.keyId);
         expect(parsedConfig.publicKey).toEqual(partialConfig.publicKey);
         
-        console.log(`✅ Round-trip successful for key ID length ${partialConfig.keyId!.length}`);
+        logger.debug(` Round-trip successful for key ID length ${partialConfig.keyId!.length}`);
         
       } catch (error) {
-        console.log(`⚠️ Round-trip failed for edge case: ${(error as Error).message}`);
+        logger.debug(` Round-trip failed for edge case: ${(error as Error).message}`);
       }
     }
   });
@@ -506,7 +507,7 @@ describe("Crypto - Key Configuration Edge Cases", () => {
       expect(parsed[i].publicKey).toEqual(configs[i].publicKey);
     }
     
-    console.log(`✅ Multiple key configuration handling: ${configs.length} configs`);
+    logger.debug(` Multiple key configuration handling: ${configs.length} configs`);
   });
 });
 
@@ -516,7 +517,7 @@ describe("Crypto - Utility Function Edge Cases", () => {
       { seed: new Uint8Array(32).fill(0x00), info: "", length: 0 },
       { seed: new Uint8Array(32).fill(0xFF), info: "test", length: 1 },
       { seed: new Uint8Array(32).fill(0x42), info: "very-long-info-string-that-exceeds-normal-length", length: 1000 },
-      { seed: new Uint8Array(32), info: "unicode-🔐-info", length: 32 },
+      { seed: new Uint8Array(32), info: "unicode--info", length: 32 },
       { seed: new Uint8Array(32), info: "\x00\x01\x02\x03", length: 16 },
     ];
 
@@ -534,10 +535,10 @@ describe("Crypto - Utility Function Edge Cases", () => {
           expect(derived.some(b => b !== 0)).toBe(true);
         }
         
-        console.log(`✅ Key derivation: info="${testCase.info.substring(0, 20)}", length=${testCase.length}`);
+        logger.debug(` Key derivation: info="${testCase.info.substring(0, 20)}", length=${testCase.length}`);
         
       } catch (error) {
-        console.log(`⚠️ Key derivation failed: ${(error as Error).message}`);
+        logger.debug(` Key derivation failed: ${(error as Error).message}`);
       }
     }
   });
@@ -563,14 +564,14 @@ describe("Crypto - Utility Function Edge Cases", () => {
           }
         }
         
-        console.log(`✅ Generated ${length} secure random bytes`);
+        logger.debug(` Generated ${length} secure random bytes`);
         
       } catch (error) {
         if (length === 0) {
           // Zero length might be rejected
-          console.log(`✅ Rejected zero-length random generation: ${(error as Error).message}`);
+          logger.debug(` Rejected zero-length random generation: ${(error as Error).message}`);
         } else {
-          console.log(`⚠️ Random generation failed for length ${length}: ${(error as Error).message}`);
+          logger.debug(` Random generation failed for length ${length}: ${(error as Error).message}`);
         }
       }
     }
@@ -582,7 +583,7 @@ describe("Crypto - Utility Function Edge Cases", () => {
       { seed: "short", desc: "short string" },
       { seed: "exactly-thirty-two-byte-string!!", desc: "32-byte string" },
       { seed: "a".repeat(100), desc: "long string" },
-      { seed: "unicode-🔐-seed", desc: "unicode string" },
+      { seed: "unicode--seed", desc: "unicode string" },
       { seed: "\x00\x01\x02\x03", desc: "binary string" },
     ];
 
@@ -593,10 +594,10 @@ describe("Crypto - Utility Function Edge Cases", () => {
         expect(validatedSeed).toBeInstanceOf(Uint8Array);
         expect(validatedSeed.length).toBe(32);
         
-        console.log(`✅ Validated ${testCase.desc}: ${validatedSeed.length} bytes`);
+        logger.debug(` Validated ${testCase.desc}: ${validatedSeed.length} bytes`);
         
       } catch (error) {
-        console.log(`⚠️ Rejected ${testCase.desc}: ${(error as Error).message}`);
+        logger.debug(` Rejected ${testCase.desc}: ${(error as Error).message}`);
       }
     }
   });
@@ -623,7 +624,7 @@ describe("Crypto - Utility Function Edge Cases", () => {
         expect(buffer).not.toEqual(originalData);
       }
       
-      console.log(`✅ Zeroized buffer of length ${buffer.length}`);
+      logger.debug(` Zeroized buffer of length ${buffer.length}`);
     }
   });
 });
@@ -656,10 +657,10 @@ describe("Crypto - Performance Under Stress", () => {
       
       expect(openResult.pt).toEqual(plaintext);
       
-      console.log("✅ Crypto operations successful under memory pressure");
+      logger.debug(" Crypto operations successful under memory pressure");
       
     } catch (error) {
-      console.log(`⚠️ Crypto operations under pressure failed (acceptable): ${(error as Error).message}`);
+      logger.debug(` Crypto operations under pressure failed (acceptable): ${(error as Error).message}`);
     } finally {
       // Clean up memory ballast
       memoryBallast.length = 0;
@@ -691,10 +692,10 @@ describe("Crypto - Performance Under Stress", () => {
     const successful = sealResults.filter(r => r.success);
     const failed = sealResults.filter(r => !r.success);
     
-    console.log(`✅ Concurrent seal operations: ${successful.length}/${concurrency} successful`);
+    logger.debug(` Concurrent seal operations: ${successful.length}/${concurrency} successful`);
     
     if (failed.length > 0) {
-      console.log(`⚠️ Failed operations: ${failed.map(f => f.index).join(', ')}`);
+      logger.debug(` Failed operations: ${failed.map(f => f.index).join(', ')}`);
     }
     
     // Test concurrent open operations on successful seals
@@ -728,7 +729,7 @@ describe("Crypto - Performance Under Stress", () => {
       const openResults = await Promise.all(openPromises);
       const openSuccessful = openResults.filter(r => r.success);
       
-      console.log(`✅ Concurrent open operations: ${openSuccessful.length}/${successful.length} successful`);
+      logger.debug(` Concurrent open operations: ${openSuccessful.length}/${successful.length} successful`);
     }
   });
 });

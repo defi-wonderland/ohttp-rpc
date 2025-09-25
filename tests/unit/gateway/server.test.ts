@@ -9,6 +9,7 @@
  */
 
 import { test, expect, describe, beforeEach } from "bun:test";
+import { logger } from "../../utils/test-logger.js";
 import { getDevConfig, validateHpkeSeed } from "../../../apps/gateway/src/env.js";
 import { isTargetAllowed } from "../../../apps/gateway/src/policy/allowlist.js";
 import { validateRequestSize } from "../../../apps/gateway/src/policy/size.js";
@@ -188,7 +189,7 @@ describe("Gateway Server - HPKE Key Management", () => {
       
     } catch (error) {
       // Expected with simplified implementation
-      console.log("Key derivation test: using simplified HPKE implementation");
+      logger.debug("Key derivation test: using simplified HPKE implementation");
       expect(error).toBeDefined();
     }
   });

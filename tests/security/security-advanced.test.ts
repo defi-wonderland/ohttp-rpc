@@ -10,6 +10,7 @@
  */
 
 import { test, expect, describe } from "bun:test";
+import { logger } from "../utils/test-logger.js";
 import { getDevConfig as getGatewayConfig } from "../../apps/gateway/src/env.js";
 import { getDevConfig as getRelayConfig } from "../../apps/relay/src/env.js";
 import { isTargetAllowed, validateInnerRequest } from "../../apps/gateway/src/policy/allowlist.js";
@@ -59,7 +60,7 @@ describe("Security - Advanced Attack Scenarios", () => {
 
     for (const maliciousUrl of maliciousUrls) {
       expect(isTargetAllowed(maliciousUrl, gatewayConfig)).toBe(false);
-      console.log(`✅ Blocked malicious URL: ${maliciousUrl.substring(0, 50)}...`);
+      logger.debug(` Blocked malicious URL: ${maliciousUrl.substring(0, 50)}...`);
     }
   });
 
@@ -77,7 +78,7 @@ describe("Security - Advanced Attack Scenarios", () => {
 
     for (const attempt of pathTraversalAttempts) {
       expect(isTargetAllowed(attempt, gatewayConfig)).toBe(false);
-      console.log(`✅ Blocked path traversal: ${attempt.substring(0, 60)}...`);
+      logger.debug(` Blocked path traversal: ${attempt.substring(0, 60)}...`);
     }
   });
 
@@ -112,7 +113,7 @@ describe("Security - Advanced Attack Scenarios", () => {
       
       // Most malicious headers should be filtered out or cause validation failure
       if (!validation.allowed) {
-        console.log(`✅ Blocked malicious header: ${name}`);
+        logger.debug(` Blocked malicious header: ${name}`);
       }
     }
   });
@@ -151,7 +152,7 @@ describe("Security - Advanced Attack Scenarios", () => {
         
       } catch (error) {
         // Expected - malformed requests should be rejected
-        console.log("✅ Rejected smuggling attempt");
+        logger.debug(" Rejected smuggling attempt");
       }
     }
   });
@@ -187,7 +188,7 @@ describe("Security - Advanced Attack Scenarios", () => {
     // Should handle many headers gracefully (most will be filtered)
     expect(headerValidation).toBeDefined();
     
-    console.log("✅ Resource exhaustion protection validated");
+    logger.debug(" Resource exhaustion protection validated");
   });
 
   test("CORS origin spoofing and bypass attempts", () => {
@@ -222,7 +223,7 @@ describe("Security - Advanced Attack Scenarios", () => {
 
     for (const origin of maliciousOrigins) {
       expect(isOriginAllowed(origin, relayConfig)).toBe(false);
-      console.log(`✅ Blocked malicious origin: ${origin}`);
+      logger.debug(` Blocked malicious origin: ${origin}`);
     }
   });
 
@@ -277,7 +278,7 @@ describe("Security - Advanced Attack Scenarios", () => {
     // Timing should not vary by more than 200% (very lenient for testing environment)
     expect(variance).toBeLessThan(avgTime * 2.0);
     
-    console.log(`✅ Timing variance: ${variance.toFixed(2)}ms (${(variance/avgTime*100).toFixed(1)}% of average)`);
+    logger.debug(` Timing variance: ${variance.toFixed(2)}ms (${(variance/avgTime*100).toFixed(1)}% of average)`);
   });
 
   test("Memory disclosure prevention", () => {
@@ -303,7 +304,7 @@ describe("Security - Advanced Attack Scenarios", () => {
         expect(errorMessage).not.toContain("secret");
         expect(errorMessage).not.toContain("key-material");
         
-        console.log(`✅ Error message sanitized: ${errorMessage.substring(0, 50)}...`);
+        logger.debug(` Error message sanitized: ${errorMessage.substring(0, 50)}...`);
       }
     }
   });
@@ -348,7 +349,7 @@ describe("Security - Advanced Attack Scenarios", () => {
     // Very lenient threshold for testing environment (allow for significant variance in test environment)
     expect(maxDeviation).toBeLessThan(Math.max(avgTime * 50.0, 1.0)); // Very lenient: 50x average or 1ms minimum
     
-    console.log(`✅ Side-channel resistance: max deviation ${maxDeviation.toFixed(3)}ms (${(maxDeviation/avgTime*100).toFixed(1)}% of average)`);
+    logger.debug(` Side-channel resistance: max deviation ${maxDeviation.toFixed(3)}ms (${(maxDeviation/avgTime*100).toFixed(1)}% of average)`);
   });
 
   test("Protocol downgrade attack prevention", () => {
@@ -364,7 +365,7 @@ describe("Security - Advanced Attack Scenarios", () => {
     
     for (const url of httpUrls) {
       expect(isTargetAllowed(url, tlsConfig)).toBe(false);
-      console.log(`✅ Blocked HTTP downgrade: ${url}`);
+      logger.debug(` Blocked HTTP downgrade: ${url}`);
     }
     
     // HTTPS should still be allowed
@@ -376,7 +377,7 @@ describe("Security - Advanced Attack Scenarios", () => {
     
     for (const url of httpsUrls) {
       expect(isTargetAllowed(url, tlsConfig)).toBe(true);
-      console.log(`✅ Allowed HTTPS: ${url}`);
+      logger.debug(` Allowed HTTPS: ${url}`);
     }
   });
 
@@ -409,7 +410,7 @@ describe("Security - Advanced Attack Scenarios", () => {
         
       } catch (error) {
         // Some malformed inputs should be rejected
-        console.log(`✅ Rejected malformed input of length ${input.length}`);
+        logger.debug(` Rejected malformed input of length ${input.length}`);
       }
     }
   });
@@ -464,7 +465,7 @@ describe("Security - Advanced Rate Limiting", () => {
       }
       
       expect(allowed).toBeLessThanOrEqual(5);
-      console.log(`✅ Rate limited spoofed client: ${clientId.replace(/\s/g, '\\s')} (${allowed}/10 allowed)`);
+      logger.debug(` Rate limited spoofed client: ${clientId.replace(/\s/g, '\\s')} (${allowed}/10 allowed)`);
     }
   });
 
@@ -523,7 +524,7 @@ describe("Security - Advanced Rate Limiting", () => {
     }
     
     expect(burstAllowed).toBeLessThanOrEqual(3);
-    console.log(`✅ Burst rate limiting: ${burstAllowed}/5 allowed`);
+    logger.debug(` Burst rate limiting: ${burstAllowed}/5 allowed`);
     
     // Wait for burst window to reset
     await new Promise(resolve => setTimeout(resolve, 1100));
@@ -538,6 +539,6 @@ describe("Security - Advanced Rate Limiting", () => {
     }
     
     expect(sustainedAllowed).toBeLessThanOrEqual(10);
-    console.log(`✅ Sustained rate limiting: ${sustainedAllowed}/20 total allowed`);
+    logger.debug(` Sustained rate limiting: ${sustainedAllowed}/20 total allowed`);
   });
 });

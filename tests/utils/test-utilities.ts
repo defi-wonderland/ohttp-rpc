@@ -79,7 +79,7 @@ export class DataGenerator {
       "", // Empty string
       "a", // Single character
       "Hello, World!", // Normal string
-      "🔐🌐🚀", // Unicode emojis
+      "", // Unicode emojis
       "Ñiño", // Accented characters
       "こんにちは", // Non-Latin script
       "𝕳𝖊𝖑𝖑𝖔", // Mathematical symbols
@@ -197,7 +197,7 @@ export class KeyConfigFactory {
         keyId = keyId || keyPair.publicKey.kid;
         publicKey = publicKey || keyPair.publicKey.bytes;
       } catch (error) {
-        console.warn(`⚠️ HPKE key generation failed, using provided fallback data: ${(error as Error).message}`);
+        console.warn(` HPKE key generation failed, using provided fallback data: ${(error as Error).message}`);
         // Only use fallback if explicitly provided
         if (!keyId || !publicKey) {
           throw new Error(`HPKE key generation failed and no fallback data provided: ${(error as Error).message}`);

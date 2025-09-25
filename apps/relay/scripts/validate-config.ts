@@ -34,32 +34,32 @@ async function validateAndDisplay(config: RelayConfig, source: string): Promise<
   console.log('');
   
   // Server settings
-  console.log('🖥️  Server:');
+  console.log('  Server:');
   console.log(`   Port: ${config.RELAY_PORT}`);
   console.log('');
   
   // Gateway settings
-  console.log('🛡️ Gateway:');
+  console.log('🛡 Gateway:');
   console.log(`   URL: ${config.GATEWAY_URL}`);
-  console.log(`   Protocol: ${config.GATEWAY_URL.startsWith('https://') ? '🔒 HTTPS' : '⚠️ HTTP'}`);
+  console.log(`   Protocol: ${config.GATEWAY_URL.startsWith('https://') ? ' HTTPS' : ' HTTP'}`);
   
   // Test connectivity
   console.log('   Connectivity: Testing...');
   const isConnectable = await testGatewayConnectivity(config.GATEWAY_URL);
-  console.log(`   Connectivity: ${isConnectable ? '✅ Reachable' : '❌ Unreachable'}`);
+  console.log(`   Connectivity: ${isConnectable ? ' Reachable' : ' Unreachable'}`);
   console.log('');
   
   // CORS settings
-  console.log('🌐 CORS:');
+  console.log(' CORS:');
   console.log(`   Allowed Origins (${config.ALLOWED_ORIGINS.length}):`);
   for (const origin of config.ALLOWED_ORIGINS) {
     const isWildcard = origin === '*';
     const isSecure = origin.startsWith('https://');
     const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
     
-    let status = '✅';
-    if (isWildcard) status = '⚠️';
-    else if (!isSecure && !isLocal) status = '❌';
+    let status = '';
+    if (isWildcard) status = '';
+    else if (!isSecure && !isLocal) status = '';
     else if (isLocal) status = '🏠';
     
     console.log(`     ${status} ${origin}${isLocal ? ' (local)' : ''}${isWildcard ? ' (all origins)' : ''}`);
@@ -67,24 +67,24 @@ async function validateAndDisplay(config: RelayConfig, source: string): Promise<
   console.log('');
   
   // Security settings
-  console.log('🔒 Security:');
+  console.log(' Security:');
   console.log(`   Max Body Size: ${(config.MAX_BODY_BYTES / 1024).toFixed(0)}KB`);
   console.log(`   Rate Limit: ${config.RATE_LIMIT_RPM} req/min per IP`);
   console.log('');
   
   // Timeout settings
-  console.log('⏱️  Timeouts:');
+  console.log('  Timeouts:');
   console.log(`   Connect: ${config.CONNECT_TIMEOUT_MS}ms`);
   console.log(`   Total: ${config.TOTAL_TIMEOUT_MS}ms`);
   console.log('');
   
   // Logging settings
-  console.log('📝 Logging:');
+  console.log(' Logging:');
   console.log(`   Level: ${config.LOG_LEVEL}`);
   console.log('');
   
   // Security analysis
-  console.log('🔍 Security Analysis:');
+  console.log(' Security Analysis:');
   const issues: string[] = [];
   const warnings: string[] = [];
   
@@ -126,17 +126,17 @@ async function validateAndDisplay(config: RelayConfig, source: string): Promise<
   
   // Display results
   if (issues.length === 0 && warnings.length === 0) {
-    console.log('   ✅ No security issues detected');
+    console.log('    No security issues detected');
   } else {
     if (issues.length > 0) {
-      console.log('   ❌ Issues:');
+      console.log('    Issues:');
       for (const issue of issues) {
         console.log(`      ${issue}`);
       }
     }
     
     if (warnings.length > 0) {
-      console.log('   ⚠️  Warnings:');
+      console.log('     Warnings:');
       for (const warning of warnings) {
         console.log(`      ${warning}`);
       }
@@ -154,7 +154,7 @@ async function main() {
   const validateDev = args.includes('--dev');
   const validateProd = args.includes('--prod') || args.length === 0;
   
-  console.log('🔍 OHTTP Relay Configuration Validator');
+  console.log(' OHTTP Relay Configuration Validator');
   console.log('======================================');
   console.log('');
   
@@ -170,11 +170,11 @@ async function main() {
       const prodConfig = loadConfig();
       await validateAndDisplay(prodConfig, 'Production');
       
-      console.log('✅ Configuration is valid and ready for deployment!');
+      console.log(' Configuration is valid and ready for deployment!');
     }
     
   } catch (error) {
-    console.error('❌ Configuration validation failed:');
+    console.error(' Configuration validation failed:');
     console.error(error);
     process.exit(1);
   }

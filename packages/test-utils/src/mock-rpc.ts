@@ -3,7 +3,9 @@
  */
 
 import type { JsonRpcRequest, JsonRpcResponse } from "@ohttp/shared";
-import { CT_JSON } from "@ohttp/shared";
+import { CT_JSON, createLogger } from "@ohttp/shared";
+
+const logger = createLogger('mock-rpc');
 
 /**
  * Mock RPC method handlers
@@ -169,7 +171,7 @@ export class MockRpcServer {
       }
       
     } catch (error) {
-      console.error("Mock RPC server error:", error);
+      logger.error("Mock RPC server error:", error);
       return new Response("Internal server error", { status: 500 });
     }
   }
@@ -211,7 +213,7 @@ export class MockRpcServer {
       fetch: (request: Request) => this.handleRequest(request),
     };
     
-    console.log(`Mock RPC server started on port ${this.port}`);
+    logger.info(`Mock RPC server started on port ${this.port}`);
     return this.server;
   }
   
@@ -221,7 +223,7 @@ export class MockRpcServer {
   stop(): void {
     if (this.server) {
       this.server = null;
-      console.log("Mock RPC server stopped");
+      logger.info("Mock RPC server stopped");
     }
   }
   

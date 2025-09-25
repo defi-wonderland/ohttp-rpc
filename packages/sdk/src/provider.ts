@@ -9,10 +9,13 @@ import type {
   JsonRpcRequest,
   JsonRpcResponse 
 } from "@ohttp/shared";
+import { createLogger } from "@ohttp/shared";
 import type { HpkeEngine } from "@ohttp/hpke-engine";
 import { createHpkeEngine } from "@ohttp/hpke-engine";
 import { OhttpClient } from "./client.js";
 import { ohttpJsonRpc } from "./fetch.js";
+
+const logger = createLogger('ohttp-provider');
 import { TargetRpcError, ConfigError } from "./errors.js";
 
 /**
@@ -92,7 +95,7 @@ export class OhttpRpcProvider {
       this.emit("connect", { chainId: null });
       
     } catch (error) {
-      console.error("Failed to initialize OHTTP client:", error);
+      logger.error("Failed to initialize OHTTP client", {}, error instanceof Error ? error : undefined);
       this.emit("disconnect", error);
     }
   }
@@ -201,7 +204,7 @@ export class OhttpRpcProvider {
         try {
           listener(data);
         } catch (error) {
-          console.error(`Error in ${event} listener:`, error);
+          logger.error(`Error in ${event} listener`, {}, error instanceof Error ? error : undefined);
         }
       });
     }

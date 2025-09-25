@@ -2,7 +2,7 @@
  * OHTTP Gateway endpoint handler
  */
 
-import { CT_OHTTP_REQ, CT_OHTTP_RES, OHTTP_PROBLEM_TYPES } from "@ohttp/shared";
+import { CT_OHTTP_REQ, CT_OHTTP_RES, OHTTP_PROBLEM_TYPES, createLogger } from "@ohttp/shared";
 import { assertContentType, unwrapEncapsulatedRequest, createProblemResponse } from "@ohttp/core";
 import type { GatewayConfig } from "../env.js";
 import type { GatewayHpkeManager } from "../crypto/hpke.js";
@@ -55,7 +55,8 @@ function extractEphemeralKey(encapsulatedRequest: Uint8Array): Uint8Array {
     return encapsulatedRequest.slice(offset, offset + Nenc);
     
   } catch (error) {
-    console.error("Failed to extract ephemeral key from OHTTP request:", error);
+    const logger = createLogger('gateway-handler');
+    logger.error("Failed to extract ephemeral key from OHTTP request", {}, error instanceof Error ? error : undefined);
     throw new Error(`Invalid OHTTP request format: ${error}`);
   }
 }
@@ -74,7 +75,8 @@ function validateDateHeader(headers: Record<string, string>, config: GatewayConf
   if (!dateHeader) {
     // RFC 9458 Section 6.5.1: Clients SHOULD include Date header
     // For now, we allow requests without Date header but warn
-    console.warn("Request missing Date header - anti-replay protection disabled");
+    const logger = createLogger('gateway-handler');
+    logger.warn("Request missing Date header - anti-replay protection disabled");
     return { valid: true };
   }
   
@@ -160,6 +162,11 @@ export async function handleGateway(
   hpkeManager: GatewayHpkeManager,
   config: GatewayConfig
 ): Promise<Response> {
+  const logger = createLogger('gateway-handler', {
+    level: config.LOG_LEVEL,
+    format: config.LOG_FORMAT,
+  });
+  
   let encapsulatedRequest: Uint8Array | null = null;
   let decryptedRequest: Uint8Array | null = null;
   let decryptResult: { plaintext: Uint8Array; context: HpkeContext; enc: Uint8Array } | null = null;
@@ -251,7 +258,7 @@ export async function handleGateway(
     });
     
   } catch (error) {
-    console.error("Gateway processing error:", error);
+    logger.error("Gateway processing error", {}, error instanceof Error ? error : undefined);
     
     // Determine error type and status
     let status = 500;
@@ -313,7 +320,8 @@ async function createEncapsulatedErrorResponse(
           },
         });
       } catch (encryptError) {
-        console.error("Failed to encrypt error response:", encryptError);
+        const logger = createLogger('gateway-handler');
+        logger.error("Failed to encrypt error response", {}, encryptError instanceof Error ? encryptError : undefined);
         // RFC 9458 Section 5.2: Cannot fallback to unencrypted responses
         // If we cannot encrypt, we must return a generic error
         throw new Error("Cannot encrypt response - HPKE context not available");
@@ -325,7 +333,8 @@ async function createEncapsulatedErrorResponse(
     throw new Error("HPKE manager required for OHTTP gateway responses");
     
   } catch (error) {
-    console.error("Failed to create encapsulated error response:", error);
+    const logger = createLogger('gateway-handler');
+    logger.error("Failed to create encapsulated error response", {}, error instanceof Error ? error : undefined);
     
     // RFC 9458 compliant behavior: Return HTTP 500 for encryption failures
     // This indicates a server-side issue, not a client request issue

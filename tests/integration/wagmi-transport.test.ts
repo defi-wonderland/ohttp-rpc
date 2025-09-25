@@ -6,6 +6,7 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { logger } from "../utils/test-logger.js";
 import { createPublicClient } from "viem";
 import { mainnet, polygon } from "viem/chains";
 import { ohttp, ohttpMultichain, ohttpConfig } from "../../packages/sdk/src/wagmi.js";
@@ -33,7 +34,7 @@ const REAL_RPC_ENDPOINTS = {
 };
 
 beforeAll(async () => {
-  console.log("🚀 Starting Wagmi OHTTP Transport with real RPC endpoints...");
+  logger.debug(" Starting Wagmi OHTTP Transport with real RPC endpoints...");
   
   // Start Gateway Server with real RPC endpoints
   const gatewayConfig = {
@@ -53,7 +54,7 @@ beforeAll(async () => {
   
   const gateway = createGatewayServer(gatewayConfig);
   await gateway.start();
-  console.log(`✅ Gateway server started on port ${gatewayConfig.GATEWAY_PORT}`);
+  logger.debug(` Gateway server started on port ${gatewayConfig.GATEWAY_PORT}`);
   
   // Start Relay Server
   const relayConfig = {
@@ -66,7 +67,7 @@ beforeAll(async () => {
   
   const relay = createRelayServer(relayConfig);
   relay.start();
-  console.log(`✅ Relay server started on port ${relayConfig.RELAY_PORT}`);
+  logger.debug(` Relay server started on port ${relayConfig.RELAY_PORT}`);
   
   // Give servers time to start
   await new Promise(resolve => setTimeout(resolve, 2000));
@@ -78,21 +79,21 @@ beforeAll(async () => {
     relayPort: relayConfig.RELAY_PORT
   };
   
-  console.log("🎯 Wagmi OHTTP Transport with real RPC endpoints ready!");
+  logger.debug(" Wagmi OHTTP Transport with real RPC endpoints ready!");
 });
 
 afterAll(async () => {
-  console.log("🧹 Cleaning up Wagmi OHTTP Transport test infrastructure...");
+  logger.debug("🧹 Cleaning up Wagmi OHTTP Transport test infrastructure...");
   
   if (servers) {
     await servers.gateway.close();
-    console.log("✅ Gateway server stopped");
+    logger.debug(" Gateway server stopped");
     
     await servers.relay.close();
-    console.log("✅ Relay server stopped");
+    logger.debug(" Relay server stopped");
   }
   
-  console.log("🎯 Wagmi OHTTP Transport cleanup complete!");
+  logger.debug(" Wagmi OHTTP Transport cleanup complete!");
 });
 
 describe("Wagmi OHTTP Transport - Real RPC Integration", () => {
@@ -119,12 +120,12 @@ describe("Wagmi OHTTP Transport - Real RPC Integration", () => {
       transport: config.transports[mainnet.id],
     });
     
-    console.log("📡 Making eth_chainId request through wagmi OHTTP config...");
+    logger.debug("📡 Making eth_chainId request through wagmi OHTTP config...");
     
     const chainId = await client.getChainId();
     expect(chainId).toBe(1);
     
-    console.log(`✅ Wagmi OHTTP config eth_chainId successful: ${chainId}`);
+    logger.debug(` Wagmi OHTTP config eth_chainId successful: ${chainId}`);
   });
 
   test("Multichain wagmi config with real RPC endpoints", async () => {
@@ -156,7 +157,7 @@ describe("Wagmi OHTTP Transport - Real RPC Integration", () => {
       transport: config.transports[polygon.id],
     });
     
-    console.log("📡 Making requests through multichain wagmi OHTTP config...");
+    logger.debug("📡 Making requests through multichain wagmi OHTTP config...");
     
     const [mainnetChainId, polygonChainId] = await Promise.all([
       mainnetClient.getChainId(),
@@ -166,7 +167,7 @@ describe("Wagmi OHTTP Transport - Real RPC Integration", () => {
     expect(mainnetChainId).toBe(1); // Ethereum mainnet
     expect(polygonChainId).toBe(137); // Polygon mainnet
     
-    console.log(`✅ Multichain wagmi OHTTP config successful: mainnet=${mainnetChainId}, polygon=${polygonChainId}`);
+    logger.debug(` Multichain wagmi OHTTP config successful: mainnet=${mainnetChainId}, polygon=${polygonChainId}`);
   });
 
   test("Manual transport configuration with real RPC", async () => {
@@ -204,7 +205,7 @@ describe("Wagmi OHTTP Transport - Real RPC Integration", () => {
       transport: config.transports[polygon.id],
     });
     
-    console.log("📡 Making requests through manual transport configuration...");
+    logger.debug("📡 Making requests through manual transport configuration...");
     
     const [mainnetChainId, polygonChainId] = await Promise.all([
       mainnetClient.getChainId(),
@@ -214,7 +215,7 @@ describe("Wagmi OHTTP Transport - Real RPC Integration", () => {
     expect(mainnetChainId).toBe(1);
     expect(polygonChainId).toBe(137);
     
-    console.log(`✅ Manual transport configuration works: mainnet=${mainnetChainId}, polygon=${polygonChainId}`);
+    logger.debug(` Manual transport configuration works: mainnet=${mainnetChainId}, polygon=${polygonChainId}`);
   });
 
   test("ohttpMultichain helper with real RPC endpoints", async () => {
@@ -241,7 +242,7 @@ describe("Wagmi OHTTP Transport - Real RPC Integration", () => {
       transport: transports[polygon.id],
     });
     
-    console.log("📡 Making requests through ohttpMultichain helper...");
+    logger.debug("📡 Making requests through ohttpMultichain helper...");
     
     const [mainnetChainId, polygonChainId] = await Promise.all([
       mainnetClient.getChainId(),
@@ -251,7 +252,7 @@ describe("Wagmi OHTTP Transport - Real RPC Integration", () => {
     expect(mainnetChainId).toBe(1);
     expect(polygonChainId).toBe(137);
     
-    console.log(`✅ ohttpMultichain helper works: mainnet=${mainnetChainId}, polygon=${polygonChainId}`);
+    logger.debug(` ohttpMultichain helper works: mainnet=${mainnetChainId}, polygon=${polygonChainId}`);
   });
 });
 
@@ -274,7 +275,7 @@ describe("Wagmi OHTTP Transport - Real RPC Operations", () => {
       transport: config.transports[mainnet.id],
     });
     
-    console.log("📡 Making complex operations through wagmi OHTTP config...");
+    logger.debug("📡 Making complex operations through wagmi OHTTP config...");
     
     // Test multiple operations
     const [chainId, blockNumber, gasPrice, balance] = await Promise.all([
@@ -289,11 +290,11 @@ describe("Wagmi OHTTP Transport - Real RPC Operations", () => {
     expect(gasPrice).toBeGreaterThan(1000000n);
     expect(balance).toBeGreaterThan(0n);
     
-    console.log(`✅ Complex operations successful:`);
-    console.log(`   Chain ID: ${chainId}`);
-    console.log(`   Block: ${blockNumber.toLocaleString()}`);
-    console.log(`   Gas Price: ${(gasPrice / 1000000000n).toString()} gwei`);
-    console.log(`   ETH Foundation Balance: ${(Number(balance) / 1e18).toFixed(4)} ETH`);
+    logger.debug(` Complex operations successful:`);
+    logger.debug(`   Chain ID: ${chainId}`);
+    logger.debug(`   Block: ${blockNumber.toLocaleString()}`);
+    logger.debug(`   Gas Price: ${(gasPrice / 1000000000n).toString()} gwei`);
+    logger.debug(`   ETH Foundation Balance: ${(Number(balance) / 1e18).toFixed(4)} ETH`);
   });
 
   test("Error handling through wagmi config", async () => {
@@ -314,7 +315,7 @@ describe("Wagmi OHTTP Transport - Real RPC Operations", () => {
       transport: config.transports[mainnet.id],
     });
     
-    console.log("📡 Testing error handling through wagmi OHTTP config...");
+    logger.debug("📡 Testing error handling through wagmi OHTTP config...");
     
     try {
       await client.request({
@@ -325,7 +326,7 @@ describe("Wagmi OHTTP Transport - Real RPC Operations", () => {
     } catch (error: any) {
       expect(error).toBeDefined();
       expect(error.message).toMatch(/method.*not (found|supported)/i);
-      console.log(`✅ Error handling works: ${error.message}`);
+      logger.debug(` Error handling works: ${error.message}`);
     }
   });
 
@@ -347,7 +348,7 @@ describe("Wagmi OHTTP Transport - Real RPC Operations", () => {
       transport: config.transports[mainnet.id],
     });
     
-    console.log("📡 Testing performance with wagmi OHTTP config and real RPC...");
+    logger.debug("📡 Testing performance with wagmi OHTTP config and real RPC...");
     
     const startTime = Date.now();
     const requestCount = 3; // Conservative for real network
@@ -370,7 +371,7 @@ describe("Wagmi OHTTP Transport - Real RPC Operations", () => {
     
     expect(avgLatency).toBeLessThan(15000); // Less than 15 seconds average for real network
     
-    console.log(`✅ Performance test: ${requestCount} requests in ${duration}ms (${avgLatency.toFixed(0)}ms avg)`);
+    logger.debug(` Performance test: ${requestCount} requests in ${duration}ms (${avgLatency.toFixed(0)}ms avg)`);
   });
 });
 
@@ -410,12 +411,12 @@ describe("Wagmi OHTTP Transport - Environment Patterns", () => {
       transport: config.transports[mainnet.id],
     });
     
-    console.log("📡 Testing environment-specific configuration pattern...");
+    logger.debug("📡 Testing environment-specific configuration pattern...");
     
     const chainId = await client.getChainId();
     expect(chainId).toBe(1);
     
-    console.log(`✅ Environment-specific configuration works: ${isDevelopment ? 'development' : 'production'} mode`);
+    logger.debug(` Environment-specific configuration works: ${isDevelopment ? 'development' : 'production'} mode`);
   });
 
   test("Fallback RPC configuration pattern", async () => {
@@ -441,11 +442,11 @@ describe("Wagmi OHTTP Transport - Environment Patterns", () => {
       transport: config.transports[mainnet.id],
     });
     
-    console.log("📡 Testing fallback RPC configuration pattern...");
+    logger.debug("📡 Testing fallback RPC configuration pattern...");
     
     const chainId = await client.getChainId();
     expect(chainId).toBe(1);
     
-    console.log(`✅ Fallback RPC configuration pattern works (using primary: ${primaryRpc})`);
+    logger.debug(` Fallback RPC configuration pattern works (using primary: ${primaryRpc})`);
   });
 });

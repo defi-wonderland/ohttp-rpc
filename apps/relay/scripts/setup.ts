@@ -34,7 +34,7 @@ async function prompt(question: string, defaultValue?: string): Promise<string> 
  * Main setup function
  */
 async function main() {
-  console.log('🚀 OHTTP Relay Setup');
+  console.log(' OHTTP Relay Setup');
   console.log('====================');
   console.log('');
   
@@ -54,15 +54,15 @@ async function main() {
   console.log('');
   
   // Gather configuration
-  console.log('📡 Server Configuration');
+  console.log(' Server Configuration');
   const port = await prompt('Relay port', '8787');
   
   console.log('');
-  console.log('🛡️ Gateway Configuration');
+  console.log('🛡 Gateway Configuration');
   const gatewayUrl = await prompt('Gateway URL (full URL to /gateway endpoint)');
   
   if (!gatewayUrl) {
-    console.error('❌ Gateway URL is required');
+    console.error(' Gateway URL is required');
     return;
   }
   
@@ -70,27 +70,27 @@ async function main() {
   try {
     const url = new URL(gatewayUrl);
     if (!url.pathname.endsWith('/gateway')) {
-      console.warn('⚠️  Gateway URL should end with /gateway');
+      console.warn('  Gateway URL should end with /gateway');
     }
   } catch {
-    console.error('❌ Invalid gateway URL');
+    console.error(' Invalid gateway URL');
     return;
   }
   
   console.log('');
-  console.log('🌐 CORS Configuration');
+  console.log(' CORS Configuration');
   const allowedOrigins = await prompt(
     'Allowed origins (comma-separated)', 
     'https://localhost:3000,https://localhost:5173'
   );
   
   console.log('');
-  console.log('🔒 Security Configuration');
+  console.log(' Security Configuration');
   const maxBodyBytes = await prompt('Max request size (bytes)', '1048576');
   const rateLimitRpm = await prompt('Rate limit (requests per minute per IP)', '60');
   
   console.log('');
-  console.log('⚙️ Advanced Configuration');
+  console.log('⚙ Advanced Configuration');
   const connectTimeout = await prompt('Connection timeout (ms)', '3000');
   const totalTimeout = await prompt('Total timeout (ms)', '15000');
   const logLevel = await prompt('Log level (debug/info/warn/error)', 'info');
@@ -125,14 +125,14 @@ async function main() {
   writeFileSync(envPath, config);
   
   console.log('');
-  console.log('✅ Configuration saved to .env');
+  console.log(' Configuration saved to .env');
   console.log('');
-  console.log('🔒 Security Notes:');
+  console.log(' Security Notes:');
   console.log('  - Restrict CORS origins to your specific domains');
   console.log('  - Use HTTPS for gateway URL in production');
   console.log('  - Monitor rate limiting and adjust as needed');
   console.log('');
-  console.log('🚀 Next Steps:');
+  console.log(' Next Steps:');
   console.log('  - Test configuration: bun run validate-config');
   console.log('  - Start in development: bun run start:dev');
   console.log('  - Start in production: bun run start');

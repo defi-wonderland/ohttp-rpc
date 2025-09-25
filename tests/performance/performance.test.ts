@@ -9,6 +9,7 @@
  */
 
 import { test, expect, describe } from "bun:test";
+import { logger } from "../utils/test-logger.js";
 import { encodeRequest as encodeBhttp, decodeRequest as decodeBhttp } from "../../packages/ohttp-core/src/bhttp.js";
 import { encodeOhttpKeys } from "../../packages/ohttp-core/src/ohttp.js";
 import { createHpkeEngine } from "../../packages/hpke-engine/src/index.js";
@@ -59,7 +60,7 @@ describe("Performance - bHTTP Encoding/Decoding", () => {
     expect(result.length).toBeGreaterThan(0);
     expect(timeMs).toBeLessThan(10); // Should encode in under 10ms
     
-    console.log(`Small request encoding: ${timeMs.toFixed(2)}ms, ${result.length} bytes`);
+    logger.debug(`Small request encoding: ${timeMs.toFixed(2)}ms, ${result.length} bytes`);
   });
 
   test("Large request encoding performance", () => {
@@ -83,7 +84,7 @@ describe("Performance - bHTTP Encoding/Decoding", () => {
     expect(result.length).toBeGreaterThan(largeBody.length);
     expect(timeMs).toBeLessThan(50); // Should encode large request in under 50ms
     
-    console.log(`Large request encoding: ${timeMs.toFixed(2)}ms, ${result.length} bytes`);
+    logger.debug(`Large request encoding: ${timeMs.toFixed(2)}ms, ${result.length} bytes`);
   });
 
   test("Decoding performance", () => {
@@ -101,7 +102,7 @@ describe("Performance - bHTTP Encoding/Decoding", () => {
     expect(result.method).toBe("GET");
     expect(timeMs).toBeLessThan(5); // Should decode in under 5ms
     
-    console.log(`Request decoding: ${timeMs.toFixed(2)}ms`);
+    logger.debug(`Request decoding: ${timeMs.toFixed(2)}ms`);
   });
 
   test("Round-trip performance", () => {
@@ -124,7 +125,7 @@ describe("Performance - bHTTP Encoding/Decoding", () => {
     expect(result.method).toBe(request.method);
     expect(timeMs).toBeLessThan(15); // Complete round-trip in under 15ms
     
-    console.log(`Round-trip performance: ${timeMs.toFixed(2)}ms`);
+    logger.debug(`Round-trip performance: ${timeMs.toFixed(2)}ms`);
   });
 });
 
@@ -138,7 +139,7 @@ describe("Performance - HPKE Operations", () => {
     expect(result.privateKey).toBeDefined();
     expect(timeMs).toBeLessThan(100); // Should generate keys in under 100ms
     
-    console.log(`Key generation: ${timeMs.toFixed(2)}ms`);
+    logger.debug(`Key generation: ${timeMs.toFixed(2)}ms`);
   });
 
   test("Key configuration encoding performance", async () => {
@@ -161,7 +162,7 @@ describe("Performance - HPKE Operations", () => {
     expect(result.length).toBeGreaterThan(0);
     expect(timeMs).toBeLessThan(5); // Should encode quickly
     
-    console.log(`Key config encoding: ${timeMs.toFixed(2)}ms, ${result.length} bytes`);
+    logger.debug(`Key config encoding: ${timeMs.toFixed(2)}ms, ${result.length} bytes`);
   });
 
   test("Key configuration parsing performance", async () => {
@@ -186,7 +187,7 @@ describe("Performance - HPKE Operations", () => {
     expect(result).toBeInstanceOf(Uint8Array);
     expect(timeMs).toBeLessThan(10); // Should encode quickly
     
-    console.log(`Key config encoding: ${timeMs.toFixed(2)}ms`);
+    logger.debug(`Key config encoding: ${timeMs.toFixed(2)}ms`);
   });
 
   test("Encryption performance", async () => {
@@ -205,10 +206,10 @@ describe("Performance - HPKE Operations", () => {
       expect(result).toBeDefined();
       expect(timeMs).toBeLessThan(50); // Should encrypt in under 50ms
       
-      console.log(`Encryption: ${timeMs.toFixed(2)}ms`);
+      logger.debug(`Encryption: ${timeMs.toFixed(2)}ms`);
     } catch (error) {
       // Expected with simplified implementation
-      console.log("Encryption performance test: using simplified HPKE implementation");
+      logger.debug("Encryption performance test: using simplified HPKE implementation");
     }
   });
 });
@@ -227,7 +228,7 @@ describe("Performance - Memory Usage", () => {
     expect(result).toBeInstanceOf(Uint8Array);
     expect(memoryMB).toBeLessThan(1); // Should use less than 1MB for small request
     
-    console.log(`bHTTP encoding memory usage: ${memoryMB.toFixed(3)}MB`);
+    logger.debug(`bHTTP encoding memory usage: ${memoryMB.toFixed(3)}MB`);
   });
 
   test("Large payload memory handling", () => {
@@ -248,7 +249,7 @@ describe("Performance - Memory Usage", () => {
     expect(new TextDecoder().decode(result.body)).toBe(largePayload);
     expect(memoryMB).toBeLessThan(5); // Should handle 100KB efficiently
     
-    console.log(`Large payload memory usage: ${memoryMB.toFixed(3)}MB`);
+    logger.debug(`Large payload memory usage: ${memoryMB.toFixed(3)}MB`);
   });
 
   test("Key configuration memory usage", async () => {
@@ -274,7 +275,7 @@ describe("Performance - Memory Usage", () => {
     expect(result).toBeInstanceOf(Uint8Array);
     expect(memoryMB).toBeLessThan(2); // Should handle multiple keys efficiently
     
-    console.log(`Multiple keys memory usage: ${memoryMB.toFixed(3)}MB`);
+    logger.debug(`Multiple keys memory usage: ${memoryMB.toFixed(3)}MB`);
   });
 });
 
@@ -300,7 +301,7 @@ describe("Performance - Concurrent Operations", () => {
     expect(results.length).toBe(10);
     expect(avgTime).toBeLessThan(5); // Average under 5ms per request
     
-    console.log(`Concurrent encoding: ${totalTime.toFixed(2)}ms total, ${avgTime.toFixed(2)}ms avg`);
+    logger.debug(`Concurrent encoding: ${totalTime.toFixed(2)}ms total, ${avgTime.toFixed(2)}ms avg`);
   });
 
   test("Concurrent key generation", async () => {
@@ -325,7 +326,7 @@ describe("Performance - Concurrent Operations", () => {
     const uniqueIds = new Set(keyIds);
     expect(uniqueIds.size).toBeGreaterThanOrEqual(keyCount - 2); // Allow up to 2 collisions in 5 keys
     
-    console.log(`Concurrent key generation: ${totalTime.toFixed(2)}ms total, ${avgTime.toFixed(2)}ms avg`);
+    logger.debug(`Concurrent key generation: ${totalTime.toFixed(2)}ms total, ${avgTime.toFixed(2)}ms avg`);
   });
 
   test("Mock RPC server load handling", async () => {
@@ -358,7 +359,7 @@ describe("Performance - Concurrent Operations", () => {
       expect(responses.every(r => r.status === 200)).toBe(true);
       expect(avgTime).toBeLessThan(10); // Average under 10ms per request
       
-      console.log(`Mock RPC load test: ${requestCount} requests, ${totalTime.toFixed(2)}ms total, ${avgTime.toFixed(2)}ms avg`);
+      logger.debug(`Mock RPC load test: ${requestCount} requests, ${totalTime.toFixed(2)}ms total, ${avgTime.toFixed(2)}ms avg`);
       
     } finally {
       mockRpc.stop();
@@ -391,7 +392,7 @@ describe("Performance - Scalability", () => {
     
     // Log scaling characteristics
     results.forEach(({ size, timeMs, throughputMBps }) => {
-      console.log(`Payload ${size} bytes: ${timeMs.toFixed(2)}ms, ${throughputMBps.toFixed(2)} MB/s`);
+      logger.debug(`Payload ${size} bytes: ${timeMs.toFixed(2)}ms, ${throughputMBps.toFixed(2)} MB/s`);
     });
     
     // Encoding should scale reasonably (not exponentially)
@@ -424,7 +425,7 @@ describe("Performance - Scalability", () => {
       
       memoryUsage.push({ size, memoryMB });
       
-      console.log(`Payload ${size} bytes: ${memoryMB.toFixed(3)}MB memory`);
+      logger.debug(`Payload ${size} bytes: ${memoryMB.toFixed(3)}MB memory`);
     }
     
     // Memory usage should scale linearly with payload size
@@ -460,7 +461,7 @@ describe("Performance - Scalability", () => {
     expect(avgTime).toBeLessThan(1); // Average under 1ms per operation
     expect(opsPerSecond).toBeGreaterThan(1000); // At least 1000 ops/second
     
-    console.log(`Stress test: ${operationCount} operations, ${totalTime.toFixed(2)}ms total`);
-    console.log(`Average: ${avgTime.toFixed(3)}ms, Throughput: ${opsPerSecond.toFixed(0)} ops/sec`);
+    logger.debug(`Stress test: ${operationCount} operations, ${totalTime.toFixed(2)}ms total`);
+    logger.debug(`Average: ${avgTime.toFixed(3)}ms, Throughput: ${opsPerSecond.toFixed(0)} ops/sec`);
   });
 });

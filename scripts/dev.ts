@@ -6,7 +6,7 @@
 import { $ } from "bun";
 
 async function startServers() {
-  console.log("🚀 Starting OHTTP development servers...\n");
+  console.log(" Starting OHTTP development servers...\n");
   
   // Start gateway server
   const gatewayProcess = Bun.spawn({
@@ -43,7 +43,7 @@ async function startServers() {
   
   // Handle shutdown
   process.on("SIGINT", () => {
-    console.log("\n🛑 Shutting down servers...");
+    console.log("\n Shutting down servers...");
     gatewayProcess.kill();
     relayProcess.kill();
     process.exit(0);

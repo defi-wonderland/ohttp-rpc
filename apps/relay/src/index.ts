@@ -5,7 +5,7 @@
  * without seeing the plaintext content. Handles CORS and basic rate limiting.
  */
 
-import { CT_OHTTP_REQ, CT_OHTTP_RES } from "@ohttp/shared";
+import { CT_OHTTP_REQ, CT_OHTTP_RES, createLogger } from "@ohttp/shared";
 import { assertContentType } from "@ohttp/core";
 import { loadConfig, getDevConfig, type RelayConfig } from "./env.js";
 import { handlePreflight, addCorsHeaders, isOriginAllowed } from "./cors.js";
@@ -67,9 +67,16 @@ class RateLimiter {
  */
 class RelayServer {
   private rateLimiter: RateLimiter;
+  private logger = createLogger('relay');
   
   constructor(private config: RelayConfig) {
     this.rateLimiter = new RateLimiter(config.RATE_LIMIT_RPM);
+    
+    // Configure logger
+    this.logger.configure({
+      level: this.config.LOG_LEVEL,
+      format: this.config.LOG_FORMAT,
+    });
     
     // Periodic cleanup of rate limiter
     setInterval(() => this.rateLimiter.cleanup(), 60000);
@@ -145,7 +152,7 @@ class RelayServer {
       const latency = Date.now() - startTime;
       recordRequestComplete(500, latency, 0);
       
-      console.error("Relay error:", error);
+      this.logger.error("Relay error", { latency: `${latency}ms`, origin }, error instanceof Error ? error : undefined);
       return this.errorResponse(500, "Internal server error", origin);
     }
   }
@@ -183,7 +190,7 @@ class RelayServer {
         try {
           assertContentType(response.headers, CT_OHTTP_RES);
         } catch (error) {
-          console.warn("Gateway returned invalid content type:", error);
+          this.logger.warn("Gateway returned invalid content type", {}, error instanceof Error ? error : undefined);
         }
       }
       
@@ -277,7 +284,7 @@ function createServer(config: RelayConfig) {
           port: config.RELAY_PORT,
           fetch: this.fetch.bind(this),
         });
-        console.log(`🚀 Relay server running on port ${config.RELAY_PORT}`);
+        relay.logger.info("Relay server running", { port: config.RELAY_PORT });
       }
     },
     
@@ -285,7 +292,7 @@ function createServer(config: RelayConfig) {
       if (server) {
         server.stop();
         server = null;
-        console.log("🛑 Relay server stopped");
+        relay.logger.info("Relay server stopped");
       }
     }
   };
@@ -302,17 +309,28 @@ async function main() {
     ? getDevConfig()
     : loadConfig();
   
-  console.log("Starting OHTTP Relay Server...");
-  console.log(`Port: ${config.RELAY_PORT}`);
-  console.log(`Gateway: ${config.GATEWAY_URL}`);
-  console.log(`Allowed Origins: ${config.ALLOWED_ORIGINS.join(", ")}`);
-  console.log(`Max Body Size: ${config.MAX_BODY_BYTES} bytes`);
+  const logger = createLogger('relay-main', {
+    level: config.LOG_LEVEL,
+    format: config.LOG_FORMAT,
+  });
+  
+  logger.info("Starting OHTTP Relay Server");
+  logger.info("Configuration", {
+    port: config.RELAY_PORT,
+    gateway: config.GATEWAY_URL,
+    allowedOrigins: config.ALLOWED_ORIGINS.length,
+    maxBodyBytes: config.MAX_BODY_BYTES,
+    rateLimitRpm: config.RATE_LIMIT_RPM,
+    logLevel: config.LOG_LEVEL,
+  });
   
   // Start server
   const server = createServer(config);
   server.start();
   
-  console.log(`Health check: http://localhost:${server.port}/health`);
+  logger.info("Server endpoints", {
+    health: `http://localhost:${server.port}/health`,
+  });
   
   // Export for Bun
   return server;
@@ -325,5 +343,9 @@ export { createServer, RelayServer };
 if (import.meta.main) {
   main().then(server => {
     // Server started
-  }).catch(console.error);
+  }).catch(error => {
+    const logger = createLogger('relay-main');
+    logger.error("Failed to start server", {}, error instanceof Error ? error : undefined);
+    process.exit(1);
+  });
 }

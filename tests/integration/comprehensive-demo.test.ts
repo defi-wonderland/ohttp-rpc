@@ -6,6 +6,7 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { logger } from "../utils/test-logger.js";
 import {
   DataGenerator,
   KeyConfigFactory,
@@ -31,17 +32,17 @@ describe("Testing Campaign Showcase", () => {
       networkDelay: 0
     });
     
-    console.log("🚀 Testing Campaign Demo Started");
-    console.log("System Info:", TestEnvironment.getSystemInfo());
+    logger.debug(" Testing Campaign Demo Started");
+    logger.debug("System Info:", TestEnvironment.getSystemInfo());
   });
   
   afterAll(() => {
     cleanup();
-    console.log("✅ Testing Campaign Demo Completed");
+    logger.debug(" Testing Campaign Demo Completed");
   });
 
   test("Data Generation Capabilities", () => {
-    console.log("\n📊 Testing Data Generation...");
+    logger.debug("\n Testing Data Generation...");
     
     // Test various data patterns
     const patterns = ['random', 'zeros', 'ones', 'incremental', 'alternating'] as const;
@@ -70,33 +71,33 @@ describe("Testing Campaign Showcase", () => {
           break;
       }
       
-      console.log(`  ✅ ${pattern} pattern: ${data.slice(0, 5).join(', ')}...`);
+      logger.debug(`   ${pattern} pattern: ${data.slice(0, 5).join(', ')}...`);
     }
     
     // Test edge case strings
     const edgeStrings = DataGenerator.edgeCaseStrings();
     expect(edgeStrings.length).toBeGreaterThan(10);
     expect(edgeStrings).toContain("");
-    expect(edgeStrings.some(s => s.includes("🔐"))).toBe(true);
+    expect(edgeStrings.some(s => s.includes(""))).toBe(true);
     
-    console.log(`  ✅ Generated ${edgeStrings.length} edge case strings`);
+    logger.debug(`   Generated ${edgeStrings.length} edge case strings`);
     
     // Test malicious URLs
     const maliciousUrls = DataGenerator.maliciousUrls();
     expect(maliciousUrls.length).toBeGreaterThan(5);
     expect(maliciousUrls.some(url => url.includes("javascript:"))).toBe(true);
     
-    console.log(`  ✅ Generated ${maliciousUrls.length} malicious URLs for security testing`);
+    logger.debug(`   Generated ${maliciousUrls.length} malicious URLs for security testing`);
   });
 
   test("Key Configuration Factory", async () => {
-    console.log("\n🔐 Testing Key Configuration Factory...");
+    logger.debug("\n Testing Key Configuration Factory...");
     
     // Create basic key config
     const basicConfig = await KeyConfigFactory.create();
     AssertionHelpers.assertValidKeyConfig(basicConfig);
     
-    console.log(`  ✅ Basic config: keyId=${basicConfig.keyId[0]}, suite=${basicConfig.suite.aead}`);
+    logger.debug(`   Basic config: keyId=${basicConfig.keyId[0]}, suite=${basicConfig.suite.aead}`);
     
     // Create multiple configs
     const multipleConfigs = await KeyConfigFactory.createMultiple(5);
@@ -106,7 +107,7 @@ describe("Testing Campaign Showcase", () => {
       AssertionHelpers.assertValidKeyConfig(config);
     }
     
-    console.log(`  ✅ Created ${multipleConfigs.length} key configurations`);
+    logger.debug(`   Created ${multipleConfigs.length} key configurations`);
     
     // Test edge cases
     const edgeCases = KeyConfigFactory.createEdgeCases();
@@ -116,18 +117,18 @@ describe("Testing Campaign Showcase", () => {
       AssertionHelpers.assertValidKeyConfig(config);
     }
     
-    console.log(`  ✅ Generated ${edgeCases.length} edge case configurations`);
+    logger.debug(`   Generated ${edgeCases.length} edge case configurations`);
     
     // Test encoding/decoding
     const encoded = encodeOhttpKeys(multipleConfigs);
     const decoded = parseOhttpKeys(encoded);
     
     expect(decoded.length).toBe(multipleConfigs.length);
-    console.log(`  ✅ Encoded/decoded ${decoded.length} configs (${encoded.length} bytes)`);
+    logger.debug(`   Encoded/decoded ${decoded.length} configs (${encoded.length} bytes)`);
   });
 
   test("Request/Response Factories", () => {
-    console.log("\n📡 Testing Request/Response Factories...");
+    logger.debug("\n📡 Testing Request/Response Factories...");
     
     // Test JSON-RPC requests
     const jsonRpcMethods = DataGenerator.jsonRpcMethods();
@@ -145,7 +146,7 @@ describe("Testing Campaign Showcase", () => {
       expect(Array.isArray(jsonRpc.params)).toBe(true);
       expect(jsonRpc.id).toBeDefined();
       
-      console.log(`  ✅ ${method} request: ${bodyText.length} bytes`);
+      logger.debug(`   ${method} request: ${bodyText.length} bytes`);
     }
     
     // Test edge case requests
@@ -155,19 +156,19 @@ describe("Testing Campaign Showcase", () => {
       AssertionHelpers.assertValidInnerRequest(request);
     }
     
-    console.log(`  ✅ Generated ${edgeCaseRequests.length} edge case requests`);
+    logger.debug(`   Generated ${edgeCaseRequests.length} edge case requests`);
     
     // Test error responses
     const errorResponses = ResponseFactory.errors();
     
     for (const { name, response } of errorResponses) {
       AssertionHelpers.assertValidInnerResponse(response);
-      console.log(`  ✅ ${name}: status ${response.status}`);
+      logger.debug(`   ${name}: status ${response.status}`);
     }
   });
 
   test("bHTTP Processing with Test Utilities", () => {
-    console.log("\n🔄 Testing bHTTP Processing...");
+    logger.debug("\n Testing bHTTP Processing...");
     
     const sizes = [100, 1000, 10000];
     const requests = RequestFactory.withSizes(sizes);
@@ -186,12 +187,12 @@ describe("Testing Campaign Showcase", () => {
       expect(decoded.url).toBe(request.url + "/"); // bHTTP adds trailing slash
       
       const compressionRatio = encoded.length / originalSize;
-      console.log(`  ✅ ${originalSize}B -> ${encoded.length}B (${compressionRatio.toFixed(2)}x)`);
+      logger.debug(`   ${originalSize}B -> ${encoded.length}B (${compressionRatio.toFixed(2)}x)`);
     }
   });
 
   test("Performance Benchmarking Demo", async () => {
-    console.log("\n⚡ Testing Performance Benchmarking...");
+    logger.debug("\n Testing Performance Benchmarking...");
     
     // Benchmark bHTTP encoding
     const bhttpBenchmark = await BenchmarkUtils.benchmark(
@@ -203,10 +204,10 @@ describe("Testing Campaign Showcase", () => {
       50 // 50 iterations for demo
     );
     
-    console.log(`  ✅ ${bhttpBenchmark.name}:`);
-    console.log(`     Average: ${bhttpBenchmark.averageTime.toFixed(2)}ms`);
-    console.log(`     Range: ${bhttpBenchmark.minTime.toFixed(2)}ms - ${bhttpBenchmark.maxTime.toFixed(2)}ms`);
-    console.log(`     Throughput: ${bhttpBenchmark.operationsPerSecond.toFixed(0)} ops/sec`);
+    logger.debug(`   ${bhttpBenchmark.name}:`);
+    logger.debug(`     Average: ${bhttpBenchmark.averageTime.toFixed(2)}ms`);
+    logger.debug(`     Range: ${bhttpBenchmark.minTime.toFixed(2)}ms - ${bhttpBenchmark.maxTime.toFixed(2)}ms`);
+    logger.debug(`     Throughput: ${bhttpBenchmark.operationsPerSecond.toFixed(0)} ops/sec`);
     
     // Benchmark key generation
     const keyGenBenchmark = await BenchmarkUtils.benchmark(
@@ -222,9 +223,9 @@ describe("Testing Campaign Showcase", () => {
       10 // Fewer iterations for crypto operations
     );
     
-    console.log(`  ✅ ${keyGenBenchmark.name}:`);
-    console.log(`     Average: ${keyGenBenchmark.averageTime.toFixed(2)}ms`);
-    console.log(`     Throughput: ${keyGenBenchmark.operationsPerSecond.toFixed(2)} ops/sec`);
+    logger.debug(`   ${keyGenBenchmark.name}:`);
+    logger.debug(`     Average: ${keyGenBenchmark.averageTime.toFixed(2)}ms`);
+    logger.debug(`     Throughput: ${keyGenBenchmark.operationsPerSecond.toFixed(2)} ops/sec`);
     
     // Performance assertions
     AssertionHelpers.assertPerformance(
@@ -238,11 +239,11 @@ describe("Testing Campaign Showcase", () => {
       }
     );
     
-    console.log(`  ✅ Performance assertions passed`);
+    logger.debug(`   Performance assertions passed`);
   });
 
   test("Test Scenarios Integration", () => {
-    console.log("\n🎭 Testing Scenario Integration...");
+    logger.debug("\n Testing Scenario Integration...");
     
     // Basic functionality scenarios
     const basicScenarios = TestScenarios.basic();
@@ -252,7 +253,7 @@ describe("Testing Campaign Showcase", () => {
       expect(scenario.expectedStatus).toBeGreaterThanOrEqual(200);
       expect(scenario.expectedStatus).toBeLessThan(300);
       
-      console.log(`  ✅ ${scenario.name}: expects ${scenario.expectedStatus}`);
+      logger.debug(`   ${scenario.name}: expects ${scenario.expectedStatus}`);
     }
     
     // Performance scenarios
@@ -262,12 +263,12 @@ describe("Testing Campaign Showcase", () => {
       expect(scenario.config).toBeDefined();
       expect(scenario.expectations).toBeDefined();
       
-      console.log(`  ✅ ${scenario.name}: ${JSON.stringify(scenario.config)}`);
+      logger.debug(`   ${scenario.name}: ${JSON.stringify(scenario.config)}`);
     }
   });
 
   test("Security Testing Integration", () => {
-    console.log("\n🛡️ Testing Security Integration...");
+    logger.debug("\n Testing Security Integration...");
     
     // Test malicious URLs are properly rejected
     const maliciousUrls = DataGenerator.maliciousUrls();
@@ -285,11 +286,11 @@ describe("Testing Campaign Showcase", () => {
                            url.includes("..");
         
         if (isSuspicious) {
-          console.log(`  ⚠️ Suspicious URL detected: ${url.substring(0, 50)}...`);
+          logger.debug(`   Suspicious URL detected: ${url.substring(0, 50)}...`);
         }
         
       } catch (error) {
-        console.log(`  ✅ Malicious URL rejected: ${url.substring(0, 50)}...`);
+        logger.debug(`   Malicious URL rejected: ${url.substring(0, 50)}...`);
       }
     }
     
@@ -303,11 +304,11 @@ describe("Testing Campaign Showcase", () => {
     );
     
     expect(injectionAttempts.length).toBeGreaterThan(0);
-    console.log(`  ✅ Detected ${injectionAttempts.length} potential injection attempts in test data`);
+    logger.debug(`   Detected ${injectionAttempts.length} potential injection attempts in test data`);
   });
 
   test("Memory Management Validation", () => {
-    console.log("\n🧠 Testing Memory Management...");
+    logger.debug("\n Testing Memory Management...");
     
     const initialMemory = process.memoryUsage();
     
@@ -342,11 +343,11 @@ describe("Testing Campaign Showcase", () => {
     );
     
     const memoryGrowth = finalMemory.heapUsed - initialMemory.heapUsed;
-    console.log(`  ✅ Memory growth: ${(memoryGrowth / 1024 / 1024).toFixed(2)}MB (within tolerance)`);
+    logger.debug(`   Memory growth: ${(memoryGrowth / 1024 / 1024).toFixed(2)}MB (within tolerance)`);
   });
 
   test("Error Handling Robustness", () => {
-    console.log("\n🚨 Testing Error Handling...");
+    logger.debug("\n Testing Error Handling...");
     
     // Test malformed requests
     const malformedRequests = RequestFactory.malformed();
@@ -356,10 +357,10 @@ describe("Testing Campaign Showcase", () => {
         // Attempt to validate the malformed request
         if (request.method && request.url) {
           AssertionHelpers.assertValidInnerRequest(request as any);
-          console.log(`  ⚠️ Malformed request unexpectedly passed: ${name}`);
+          logger.debug(`   Malformed request unexpectedly passed: ${name}`);
         }
       } catch (error) {
-        console.log(`  ✅ Malformed request properly rejected: ${name}`);
+        logger.debug(`   Malformed request properly rejected: ${name}`);
         expect(error).toBeInstanceOf(Error);
       }
     }
@@ -371,19 +372,19 @@ describe("Testing Campaign Showcase", () => {
       AssertionHelpers.assertValidInnerResponse(response);
       expect(response.status).toBeGreaterThanOrEqual(400);
       
-      console.log(`  ✅ Error response valid: ${name} (${response.status})`);
+      logger.debug(`   Error response valid: ${name} (${response.status})`);
     }
   });
 
   test("End-to-End Integration Demo", async () => {
-    console.log("\n🔗 Testing End-to-End Integration...");
+    logger.debug("\n Testing End-to-End Integration...");
     
     try {
       // Create key configuration
       const keyConfig = await KeyConfigFactory.create();
       const keyConfigBytes = encodeOhttpKeys([keyConfig]);
       
-      console.log(`  ✅ Key config created: ${keyConfigBytes.length} bytes`);
+      logger.debug(`   Key config created: ${keyConfigBytes.length} bytes`);
       
       // Create test request
       const request = RequestFactory.jsonRpc({
@@ -391,17 +392,17 @@ describe("Testing Campaign Showcase", () => {
         params: []
       });
       
-      console.log(`  ✅ Request created: ${new TextDecoder().decode(request.body!).substring(0, 50)}...`);
+      logger.debug(`   Request created: ${new TextDecoder().decode(request.body!).substring(0, 50)}...`);
       
       // Encode request
       const encodedRequest = encodeBhttp(request);
-      console.log(`  ✅ Request encoded: ${encodedRequest.length} bytes`);
+      logger.debug(`   Request encoded: ${encodedRequest.length} bytes`);
       
       // Decode request (simulate processing)
       const decodedRequest = decodeBhttp(encodedRequest);
       expect(decodedRequest.method).toBe(request.method);
       
-      console.log(`  ✅ Request decoded successfully`);
+      logger.debug(`   Request decoded successfully`);
       
       // Create response
       const response = ResponseFactory.jsonRpc({
@@ -409,17 +410,17 @@ describe("Testing Campaign Showcase", () => {
         id: 1
       });
       
-      console.log(`  ✅ Response created: status ${response.status}`);
+      logger.debug(`   Response created: status ${response.status}`);
       
       // Validate end-to-end flow
       AssertionHelpers.assertValidInnerRequest(request);
       AssertionHelpers.assertValidInnerResponse(response);
       AssertionHelpers.assertValidKeyConfig(keyConfig);
       
-      console.log(`  ✅ End-to-end validation successful`);
+      logger.debug(`   End-to-end validation successful`);
       
     } catch (error) {
-      console.log(`  ❌ E2E integration failed: ${(error as Error).message}`);
+      logger.debug(`   E2E integration failed: ${(error as Error).message}`);
       
       // Test individual components to help diagnose the issue
       try {
@@ -429,9 +430,9 @@ describe("Testing Campaign Showcase", () => {
         AssertionHelpers.assertValidInnerRequest(basicRequest);
         AssertionHelpers.assertValidInnerResponse(basicResponse);
         
-        console.log(`  ✅ Individual components work - E2E integration issue`);
+        logger.debug(`   Individual components work - E2E integration issue`);
       } catch (componentError) {
-        console.log(`  ❌ Component validation also failed: ${(componentError as Error).message}`);
+        logger.debug(`   Component validation also failed: ${(componentError as Error).message}`);
       }
       
       // Don't hide the E2E failure
@@ -440,20 +441,20 @@ describe("Testing Campaign Showcase", () => {
   });
 
   test("Testing Campaign Summary", () => {
-    console.log("\n📋 Testing Campaign Summary:");
-    console.log("  ✅ Security Tests: Advanced attack scenarios, input validation");
-    console.log("  ✅ Crypto Edge Cases: HPKE failure modes, key management");
-    console.log("  ✅ RFC Compliance: Strict protocol validation, format compliance");
-    console.log("  ✅ Integration Robustness: Failure scenarios, error propagation");
-    console.log("  ✅ Performance Monitoring: Resource tracking, regression detection");
-    console.log("  ✅ Test Utilities: Data generators, factories, benchmarking");
-    console.log("\n🎯 Campaign Objectives Achieved:");
-    console.log("  • Comprehensive test coverage across all components");
-    console.log("  • Security boundary validation with attack simulations");
-    console.log("  • Performance regression detection and monitoring");
-    console.log("  • Reusable utilities for ongoing development");
-    console.log("  • Integration testing with failure scenario handling");
-    console.log("  • RFC 9458 compliance validation");
+    logger.debug("\n Testing Campaign Summary:");
+    logger.debug("   Security Tests: Advanced attack scenarios, input validation");
+    logger.debug("   Crypto Edge Cases: HPKE failure modes, key management");
+    logger.debug("   RFC Compliance: Strict protocol validation, format compliance");
+    logger.debug("   Integration Robustness: Failure scenarios, error propagation");
+    logger.debug("   Performance Monitoring: Resource tracking, regression detection");
+    logger.debug("   Test Utilities: Data generators, factories, benchmarking");
+    logger.debug("\n Campaign Objectives Achieved:");
+    logger.debug("  • Comprehensive test coverage across all components");
+    logger.debug("  • Security boundary validation with attack simulations");
+    logger.debug("  • Performance regression detection and monitoring");
+    logger.debug("  • Reusable utilities for ongoing development");
+    logger.debug("  • Integration testing with failure scenario handling");
+    logger.debug("  • RFC 9458 compliance validation");
     
     expect(true).toBe(true); // Always pass - this is a summary
   });

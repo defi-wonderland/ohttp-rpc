@@ -10,7 +10,7 @@ import type {
   OhttpKeyConfig,
   OhttpKeysDocument 
 } from "@ohttp/shared";
-import { CT_OHTTP_REQ, CT_OHTTP_RES, OHTTP_CONSTANTS, HPKE_SUITE_IDS } from "@ohttp/shared";
+import { CT_OHTTP_REQ, CT_OHTTP_RES, OHTTP_CONSTANTS, HPKE_SUITE_IDS, createLogger } from "@ohttp/shared";
 import type { HpkeEngine } from "@ohttp/hpke-engine";
 import { createHpkeEngine } from "@ohttp/hpke-engine";
 import { 
@@ -53,6 +53,7 @@ export interface SendViaRelayOptions {
 export class OhttpClient {
   private currentContext: any = null; // Store HPKE context for response decryption
   private currentEnc: Uint8Array | null = null; // Store enc from request for response decryption
+  private logger = createLogger('ohttp-client');
   
   private constructor(
     private readonly engine: HpkeEngine,
@@ -195,7 +196,7 @@ export class OhttpClient {
         ];
         
         if (forbiddenHeaders.includes(name.toLowerCase())) {
-          console.warn(`Warning: Header '${name}' may reduce privacy`);
+          this.logger.warn(`Header may reduce privacy: ${name}`);
         }
         
         if (typeof value !== "string") {
