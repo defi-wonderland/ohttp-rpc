@@ -4,3 +4,7 @@ production = false
 [run]
 # Allow network for servers and tests
 bun = true
+
+[test]
+# Set longer timeout for integration tests (default is 5000ms)
+timeout = 60000

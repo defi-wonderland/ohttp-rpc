@@ -33,8 +33,8 @@ let servers: TestServers;
 beforeAll(async () => {
   console.log("🚀 Starting E2E test infrastructure...");
   
-  // Start Mock RPC Server
-  const mockRpcPort = 3400;
+  // Start Mock RPC Server with dynamic port allocation
+  const mockRpcPort = 3400 + Math.floor(Math.random() * 1000); // Use random port to avoid conflicts
   const mockRpc = new MockRpcServer(mockRpcPort);
   const mockRpcHandler = mockRpc.start();
   
@@ -47,9 +47,10 @@ beforeAll(async () => {
   console.log(`✅ Mock RPC server started on port ${mockRpcPort}`);
   
   // Start Gateway Server
+  const gatewayPort = 8800 + Math.floor(Math.random() * 1000);
   const gatewayConfig = {
     ...getGatewayConfig(),
-    GATEWAY_PORT: 8800,
+    GATEWAY_PORT: gatewayPort,
     ALLOWED_TARGETS: [
       `http://localhost:${mockRpcPort}`,
       "https://mainnet.infura.io",
@@ -64,9 +65,10 @@ beforeAll(async () => {
   console.log(`✅ Gateway server started on port ${gatewayConfig.GATEWAY_PORT}`);
   
   // Start Relay Server
+  const relayPort = 8801 + Math.floor(Math.random() * 1000);
   const relayConfig = {
     ...getRelayConfig(),
-    RELAY_PORT: 8801,
+    RELAY_PORT: relayPort,
     GATEWAY_URL: `http://localhost:${gatewayConfig.GATEWAY_PORT}/gateway`,
     GATEWAY_KEYS_URL: `http://localhost:${gatewayConfig.GATEWAY_PORT}/ohttp-keys`,
     LOG_LEVEL: "error" as const // Reduce noise in tests

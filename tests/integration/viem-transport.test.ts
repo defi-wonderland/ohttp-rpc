@@ -36,9 +36,10 @@ beforeAll(async () => {
   console.log("🚀 Starting Viem OHTTP Transport with real RPC endpoints...");
   
   // Start Gateway Server with real RPC endpoints
+  const gatewayPort = 8850 + Math.floor(Math.random() * 1000);
   const gatewayConfig = {
     ...getGatewayConfig(),
-    GATEWAY_PORT: 8850,
+    GATEWAY_PORT: gatewayPort,
     ALLOWED_TARGETS: [
       REAL_RPC_ENDPOINTS.mainnet,
       REAL_RPC_ENDPOINTS.polygon,
@@ -56,9 +57,10 @@ beforeAll(async () => {
   console.log(`✅ Gateway server started on port ${gatewayConfig.GATEWAY_PORT}`);
   
   // Start Relay Server
+  const relayPort = 8851 + Math.floor(Math.random() * 1000);
   const relayConfig = {
     ...getRelayConfig(),
-    RELAY_PORT: 8851,
+    RELAY_PORT: relayPort,
     GATEWAY_URL: `http://localhost:${gatewayConfig.GATEWAY_PORT}/gateway`,
     GATEWAY_KEYS_URL: `http://localhost:${gatewayConfig.GATEWAY_PORT}/ohttp-keys`,
     LOG_LEVEL: "error" as const

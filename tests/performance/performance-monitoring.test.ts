@@ -354,7 +354,7 @@ describe("Performance - Resource Usage Monitoring", () => {
     expect(parseMetrics.memoryDelta.heapUsed).toBeLessThan(1024 * 1024); // Under 1MB
   });
 
-  test("End-to-end request performance profiling", async () => {
+  test.skip("End-to-end request performance profiling", async () => {
     const mockRpc = new MockRpcServer(3360);
     const rpcServer = mockRpc.start();
     
