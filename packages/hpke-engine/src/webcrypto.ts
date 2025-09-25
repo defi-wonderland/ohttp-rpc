@@ -17,6 +17,7 @@ import type {
   HpkeSuiteInfo,
 } from "./interface.js";
 import { HpkeCryptoError } from "./interface.js";
+import { x25519 } from "@noble/curves/ed25519.js";
 
 /**
  * RFC 9180 compliant HPKE Context implementation
@@ -94,20 +95,13 @@ export class WebCryptoHpkeEngine implements HpkeEngine {
     privateKey: HpkePrivateKey;
   }> {
     try {
-      // Generate X25519 key pair using WebCrypto
-      const keyPair = await crypto.subtle.generateKey(
-        { name: "X25519" },
-        true, // extractable
-        ["deriveKey"]
-      ) as CryptoKeyPair;
-
-      // Extract public key bytes
-      const publicKeyBuffer = await crypto.subtle.exportKey("raw", keyPair.publicKey);
-      const publicKeyBytes = new Uint8Array(publicKeyBuffer);
-
-      // Extract private key bytes
-      const privateKeyBuffer = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
-      const privateKeyBytes = new Uint8Array(privateKeyBuffer);
+      // RFC 9180 Section 7.1: Generate X25519 key pair using @noble/curves
+      
+      // Generate 32 random bytes for private key scalar
+      const privateKeyScalar = crypto.getRandomValues(new Uint8Array(32));
+      
+      // Derive public key using X25519 base point multiplication
+      const publicKeyBytes = x25519.getPublicKey(privateKeyScalar);
 
       // Generate random 1-byte key ID (RFC 9458 requirement)
       const kid = crypto.getRandomValues(new Uint8Array(1));
@@ -118,13 +112,14 @@ export class WebCryptoHpkeEngine implements HpkeEngine {
           bytes: publicKeyBytes,
         },
         privateKey: {
-          bytes: privateKeyBytes,
+          bytes: privateKeyScalar,
         },
       };
     } catch (error) {
       throw new HpkeCryptoError(`Key generation failed: ${error}`, "generateKeyPair");
     }
   }
+
 
   async deriveKeyPair(seed: Uint8Array): Promise<{
     publicKey: HpkePublicKey;
@@ -136,7 +131,6 @@ export class WebCryptoHpkeEngine implements HpkeEngine {
 
     try {
       // RFC 9180 Section 7.1.3: DeriveKeyPair for DHKEM(X25519, HKDF-SHA256)
-      // This implementation uses HKDF to derive a private key scalar from seed
       
       // Use HKDF-Expand to derive private key scalar
       const suite_id = new Uint8Array(5);
@@ -160,25 +154,8 @@ export class WebCryptoHpkeEngine implements HpkeEngine {
       privateKeyScalar[31] &= 127;
       privateKeyScalar[31] |= 64;
       
-      // Generate WebCrypto key pair from the derived scalar
-      // Note: WebCrypto doesn't support importing raw X25519 scalars directly
-      // So we'll use a deterministic but cryptographically valid approach
-      
-      // Create a deterministic but secure key pair
-      const keyPair = await crypto.subtle.generateKey(
-        { name: "X25519" },
-        true,
-        ["deriveKey"]
-      ) as CryptoKeyPair;
-      
-      // Extract the actual key bytes
-      const publicKeyBuffer = await crypto.subtle.exportKey("raw", keyPair.publicKey);
-      const publicKeyBytes = new Uint8Array(publicKeyBuffer);
-      
-      // For the private key, we'll store our derived scalar in PKCS#8 format
-      // This is a compromise for WebCrypto compatibility
-      const privateKeyBuffer = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
-      const privateKeyBytes = new Uint8Array(privateKeyBuffer);
+      // Derive public key using X25519 base point multiplication with @noble/curves
+      const publicKeyBytes = x25519.getPublicKey(privateKeyScalar);
       
       const kid = seed.slice(0, 1); // Use first byte of seed as key ID
 
@@ -188,7 +165,7 @@ export class WebCryptoHpkeEngine implements HpkeEngine {
           bytes: publicKeyBytes,
         },
         privateKey: {
-          bytes: privateKeyBytes,
+          bytes: privateKeyScalar,
         },
       };
     } catch (error) {
@@ -203,42 +180,32 @@ export class WebCryptoHpkeEngine implements HpkeEngine {
     info?: Uint8Array
   ): Promise<HpkeSealResult> {
     try {
-      // RFC 9180 Section 5.1.1: SetupBaseS
-      
-      // Generate ephemeral key pair
+      // RFC 9180 Section 4: Single-Shot APIs - Encryption
+      // Generate ephemeral key pair for sender
       const ephemeralKeyPair = await this.generateKeyPair();
       const enc = ephemeralKeyPair.publicKey.bytes;
       
-      // Import recipient public key
-      const recipientPublicKey = await crypto.subtle.importKey(
-        "raw",
-        pk.bytes as BufferSource,
-        { name: "X25519" },
-        false,
-        []
-      );
+      // Perform X25519 ECDH using @noble/curves (RFC 9180 Section 7.1.1)
+      const dh = x25519.getSharedSecret(ephemeralKeyPair.privateKey.bytes, pk.bytes);
       
-      // Import ephemeral private key (simplified - in production would use proper format)
-      const ephemeralPrivateKeyBuffer = new ArrayBuffer(ephemeralKeyPair.privateKey.bytes.length);
-      new Uint8Array(ephemeralPrivateKeyBuffer).set(ephemeralKeyPair.privateKey.bytes);
+      // RFC 9180 Section 7.1.1: ExtractAndExpand for DHKEM
+      const kemContext = new Uint8Array(enc.length + pk.bytes.length);
+      kemContext.set(enc, 0);
+      kemContext.set(pk.bytes, enc.length);
       
-      // For WebCrypto compatibility, we'll use a simplified ECDH approach
-      // In production, this would use proper X25519 key derivation
+      const sharedSecret = await this.extractAndExpand(dh, kemContext);
       
-      // Derive shared secret using HKDF
-      const sharedSecret = await this.hkdfExtract(
-        new Uint8Array(0), // empty salt
-        new Uint8Array([...enc, ...pk.bytes]) // ikm = enc || pk
-      );
-      
-      // Key schedule: RFC 9180 Section 5.1
+      // RFC 9180 Section 5.1: Key Schedule
       const keyScheduleContext = await this.keySchedule(
         sharedSecret,
         info || new Uint8Array(0)
       );
       
-      // Encrypt using AES-128-GCM
-      const nonce = crypto.getRandomValues(new Uint8Array(12));
+      // RFC 9180 Section 5.2: Single-Shot APIs
+      // Encrypt using AES-128-GCM with derived key and base nonce
+      const seqNum = 0; // Single-shot encryption
+      const nonce = this.computeNonce(keyScheduleContext.baseNonce, seqNum);
+      
       const aeadKey = await crypto.subtle.importKey(
         "raw",
         keyScheduleContext.key as BufferSource,
@@ -250,19 +217,23 @@ export class WebCryptoHpkeEngine implements HpkeEngine {
       const encryptedData = await crypto.subtle.encrypt(
         {
           name: "AES-GCM",
-          iv: nonce,
+          iv: nonce as BufferSource,
           additionalData: (aad || new Uint8Array(0)) as BufferSource,
         },
         aeadKey,
         pt as BufferSource
       );
       
-      // Combine nonce and encrypted data
-      const ct = new Uint8Array(nonce.length + encryptedData.byteLength);
-      ct.set(nonce, 0);
-      ct.set(new Uint8Array(encryptedData), nonce.length);
+      const ct = new Uint8Array(encryptedData);
       
-      return { enc, ct };
+      // Create HPKE context for response decryption with proper exporter secret
+      const context = new WebCryptoHpkeContext(
+        keyScheduleContext.exporterSecret,
+        this.suiteId,
+        this
+      );
+      
+      return { enc, ct, context };
       
     } catch (error) {
       throw new HpkeCryptoError(`HPKE seal failed: ${error}`, "sealBase");
@@ -278,27 +249,28 @@ export class WebCryptoHpkeEngine implements HpkeEngine {
     info?: Uint8Array
   ): Promise<HpkeOpenResult> {
     try {
-      if (ct.length < 12) {
-        throw new HpkeCryptoError("Ciphertext too short", "openBase");
-      }
+      // RFC 9180 Section 4: Single-Shot APIs - Decryption
       
-      // Extract nonce and encrypted data
-      const nonce = ct.slice(0, 12);
-      const encryptedData = ct.slice(12);
+      // Perform X25519 ECDH using @noble/curves (RFC 9180 Section 7.1.1)
+      const dh = x25519.getSharedSecret(sk.bytes, enc);
       
-      // Derive shared secret (same as in sealBase)
-      const sharedSecret = await this.hkdfExtract(
-        new Uint8Array(0), // empty salt
-        new Uint8Array([...enc, ...pk.bytes]) // ikm = enc || pk
-      );
+      // RFC 9180 Section 7.1.1: ExtractAndExpand for DHKEM
+      const kemContext = new Uint8Array(enc.length + pk.bytes.length);
+      kemContext.set(enc, 0);
+      kemContext.set(pk.bytes, enc.length);
       
-      // Key schedule
+      const sharedSecret = await this.extractAndExpand(dh, kemContext);
+      
+      // RFC 9180 Section 5.1: Key Schedule (same as sender)
       const keyScheduleContext = await this.keySchedule(
         sharedSecret,
         info || new Uint8Array(0)
       );
       
-      // Decrypt using AES-128-GCM
+      // RFC 9180 Section 5.2: Decrypt with derived key and computed nonce
+      const seqNum = 0; // Single-shot decryption
+      const nonce = this.computeNonce(keyScheduleContext.baseNonce, seqNum);
+      
       const aeadKey = await crypto.subtle.importKey(
         "raw",
         keyScheduleContext.key as BufferSource,
@@ -310,16 +282,16 @@ export class WebCryptoHpkeEngine implements HpkeEngine {
       const decryptedData = await crypto.subtle.decrypt(
         {
           name: "AES-GCM",
-          iv: nonce,
+          iv: nonce as BufferSource,
           additionalData: (aad || new Uint8Array(0)) as BufferSource,
         },
         aeadKey,
-        encryptedData
+        ct as BufferSource
       );
       
       const pt = new Uint8Array(decryptedData);
       
-      // Create HPKE context for response encryption
+      // Create HPKE context for response encryption with proper exporter secret
       const context = new WebCryptoHpkeContext(
         keyScheduleContext.exporterSecret,
         this.suiteId,
@@ -340,6 +312,33 @@ export class WebCryptoHpkeEngine implements HpkeEngine {
   async kdfExpand(prk: Uint8Array, info: string, length: number): Promise<Uint8Array> {
     const infoBytes = new TextEncoder().encode(info);
     return this.hkdfExpand(prk, infoBytes, length);
+  }
+
+  /**
+   * RFC 9180 Section 7.1.1: ExtractAndExpand for DHKEM
+   */
+  private async extractAndExpand(dh: Uint8Array, kemContext: Uint8Array): Promise<Uint8Array> {
+    // RFC 9180 Section 7.1.1: ExtractAndExpand(dh, kem_context)
+    // where kem_context = concat(enc, pkR)
+    
+    // KEM suite ID for DHKEM(X25519, HKDF-SHA256)
+    const kemSuiteId = new Uint8Array(5);
+    kemSuiteId.set(new TextEncoder().encode("KEM"), 0);
+    kemSuiteId[3] = 0x00;
+    kemSuiteId[4] = 0x20; // DHKEM_X25519_HKDF_SHA256
+    
+    // eae_prk = Extract(salt="", ikm=dh)
+    const eaePrk = await this.hkdfExtract(new Uint8Array(0), dh);
+    
+    // shared_secret = Expand(eae_prk, kem_context || kem_suite_id, Nsecret)
+    const info = new Uint8Array(kemContext.length + kemSuiteId.length);
+    info.set(kemContext, 0);
+    info.set(kemSuiteId, kemContext.length);
+    
+    const Nsecret = 32; // 32 bytes for HKDF-SHA256
+    const sharedSecret = await this.hkdfExpand(eaePrk, info, Nsecret);
+    
+    return sharedSecret;
   }
 
   /**
@@ -391,6 +390,29 @@ export class WebCryptoHpkeEngine implements HpkeEngine {
     );
     
     return { key, baseNonce, exporterSecret };
+  }
+
+  /**
+   * RFC 9180 Section 5.2: Compute nonce for sequence number
+   */
+  private computeNonce(baseNonce: Uint8Array, seqNum: number): Uint8Array {
+    const nonce = new Uint8Array(baseNonce);
+    
+    // XOR the sequence number (big-endian) with the base nonce
+    // For single-shot encryption, seqNum is always 0, so this is a no-op
+    // But we implement it correctly for RFC compliance
+    const seqBytes = new Uint8Array(8);
+    for (let i = 0; i < 8; i++) {
+      seqBytes[7 - i] = (seqNum >>> (i * 8)) & 0xFF;
+    }
+    
+    // XOR the last 8 bytes of nonce with sequence number
+    const nonceLen = nonce.length;
+    for (let i = 0; i < 8; i++) {
+      nonce[nonceLen - 8 + i] ^= seqBytes[i];
+    }
+    
+    return nonce;
   }
 
   /**

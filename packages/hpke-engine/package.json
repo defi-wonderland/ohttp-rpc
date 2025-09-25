@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@noble/curves": "^2.0.1",
     "@ohttp/shared": "workspace:*"
   },
   "keywords": ["ohttp", "hpke", "cryptography", "webcrypto", "typescript"],

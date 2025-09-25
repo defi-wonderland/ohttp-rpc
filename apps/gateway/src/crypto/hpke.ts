@@ -13,8 +13,6 @@ export class GatewayHpkeManager {
   private engine: HpkeEngine;
   private publicKey: HpkePublicKey | null = null;
   private privateKey: HpkePrivateKey | null = null;
-  private currentContext: HpkeContext | null = null; // Store HPKE context for RFC 9458 response encryption
-  private currentEnc: Uint8Array | null = null; // Store enc from request for response encryption
   
   constructor(engine?: HpkeEngine) {
     this.engine = engine || createHpkeEngine();
@@ -60,22 +58,38 @@ export class GatewayHpkeManager {
   async decryptRequest(
     encapsulatedRequest: Uint8Array,
     info?: Uint8Array
-  ): Promise<Uint8Array> {
+  ): Promise<{ plaintext: Uint8Array; context: HpkeContext; enc: Uint8Array }> {
     if (!this.publicKey || !this.privateKey) {
       throw new Error("HPKE keys not initialized");
     }
     
     try {
       // Parse OHTTP request format per RFC 9458 Section 4.1:
-      // [Key Identifier (8)][HPKE KEM ID (16)][HPKE KDF ID (16)][HPKE AEAD ID (16)][enc][ciphertext]
-      if (encapsulatedRequest.length < 7) { // 1 + 2 + 2 + 2 = 7 bytes minimum
+      // [Key Identifier (1-8 bytes)][HPKE KEM ID (16)][HPKE KDF ID (16)][HPKE AEAD ID (16)][enc][ciphertext]
+      if (encapsulatedRequest.length < 1 + 2 + 2 + 2 + 32 + 16) { // min keyId + kem + kdf + aead + enc + min ciphertext
         throw new Error("Encapsulated request too short for RFC 9458 format");
+      }
+      
+      // RFC 9458 Section 3.1: Key ID can be 1-8 bytes
+      // We need to match against our stored key ID to determine the length
+      if (!this.publicKey || !this.publicKey.kid) {
+        throw new Error("No public key available for key ID matching");
+      }
+      
+      const expectedKeyIdLength = this.publicKey.kid.length;
+      if (expectedKeyIdLength < 1 || expectedKeyIdLength > 8) {
+        throw new Error("Invalid stored key ID length");
+      }
+      
+      if (encapsulatedRequest.length < expectedKeyIdLength + 2 + 2 + 2 + 32 + 16) {
+        throw new Error("Request too short for expected key ID length");
       }
       
       let offset = 0;
       
-      // Key Identifier (8 bits)
-      const keyId = new Uint8Array([encapsulatedRequest[offset++]]);
+      // Key Identifier (1-8 bytes per RFC 9458 Section 3.1)
+      const keyId = encapsulatedRequest.slice(offset, offset + expectedKeyIdLength);
+      offset += expectedKeyIdLength;
       
       // HPKE KEM ID (16 bits, network byte order)
       const kemId = (encapsulatedRequest[offset++] << 8) | encapsulatedRequest[offset++];
@@ -87,7 +101,8 @@ export class GatewayHpkeManager {
       const aeadId = (encapsulatedRequest[offset++] << 8) | encapsulatedRequest[offset++];
       
       // Verify key_id matches our key
-      if (!this.publicKey.kid.every((b, i) => b === keyId[i]) || keyId.length !== this.publicKey.kid.length) {
+      if (keyId.length !== this.publicKey.kid.length || 
+          !keyId.every((b, i) => b === this.publicKey.kid[i])) {
         throw new Error("Key ID mismatch");
       }
       
@@ -120,11 +135,12 @@ export class GatewayHpkeManager {
         this.publicKey.kid // use key ID as info parameter to match SDK
       );
       
-      // Store context and enc for RFC 9458 response encryption
-      this.currentContext = result.context;
-      this.currentEnc = enc;
-      
-      return result.pt;
+      // Return plaintext, context, and enc for RFC 9458 response encryption
+      return {
+        plaintext: result.pt,
+        context: result.context,
+        enc: enc
+      };
       
     } catch (error) {
       throw new Error(`Failed to decrypt OHTTP request: ${error}`);
@@ -134,62 +150,57 @@ export class GatewayHpkeManager {
   /**
    * Encrypt OHTTP response per RFC 9458 Section 4.2
    */
-  async encryptResponse(responseData: Uint8Array): Promise<Uint8Array> {
-    if (!this.currentContext || !this.currentEnc) {
-      throw new Error("No HPKE context available - must decrypt request first");
-    }
+  async encryptResponse(
+    responseData: Uint8Array, 
+    context: HpkeContext, 
+    enc: Uint8Array
+  ): Promise<Uint8Array> {
     
     try {
       // RFC 9458 Section 4.2: OHTTP Response Encryption
       // 1. Export secret from HPKE context using "message/bhttp response"
-      // 2. Generate random response_nonce
-      // 3. Extract PRK using KDF with salt = concat(enc, response_nonce)
-      // 4. Expand PRK to get AEAD key and nonce
-      // 5. Encrypt response with derived AEAD key/nonce
-      // 6. Return [response_nonce][ciphertext]
-      
-      // Simplified RFC 9458-compatible response encryption
-      // Use the same key derivation approach as the SDK for consistency
       const Nn = 12; // AES-128-GCM nonce length
       const Nk = 16; // AES-128-GCM key length
       const secretLength = Math.max(Nn, Nk); // 16
       
-      // Generate random response_nonce
+      const secret = await context.export("message/bhttp response", secretLength);
+      
+      // 2. Generate random response_nonce
       const responseNonce = crypto.getRandomValues(new Uint8Array(secretLength));
       
-      // Use simplified key derivation that matches the SDK
-      // Derive key material from Gateway's public key, key ID, and response nonce
-      if (!this.publicKey) {
-        throw new Error("Public key not available for response encryption");
-      }
+      // 3. Extract PRK using KDF with salt = concat(enc, response_nonce)
+      const salt = new Uint8Array(enc.length + responseNonce.length);
+      salt.set(enc, 0);
+      salt.set(responseNonce, enc.length);
       
-      const keyMaterial = new Uint8Array(Nk);
-      for (let i = 0; i < Nk; i++) {
-        keyMaterial[i] = this.publicKey.bytes[i % this.publicKey.bytes.length] ^
-                        this.publicKey.kid[i % this.publicKey.kid.length] ^
-                        responseNonce[i % responseNonce.length];
-      }
+      const prk = await this.engine.kdfExtract(salt, secret);
       
-      // Derive nonce for auth tag
-      const derivedNonce = new Uint8Array(Nn);
-      for (let i = 0; i < Nn; i++) {
-        derivedNonce[i] = responseNonce[i % responseNonce.length] ^ this.publicKey.kid[i % this.publicKey.kid.length];
-      }
+      // 4. Expand PRK to get AEAD key and nonce
+      const aeadKey = await this.engine.kdfExpand(prk, "key", Nk);
+      const aeadNonce = await this.engine.kdfExpand(prk, "nonce", Nn);
       
-      // Encrypt response data
-      const ciphertext = new Uint8Array(responseData.length + 16); // +16 for auth tag
+      // 5. Encrypt response with derived AEAD key/nonce using AES-128-GCM
+      const aeadKeyObject = await crypto.subtle.importKey(
+        "raw",
+        aeadKey as BufferSource,
+        { name: "AES-GCM" },
+        false,
+        ["encrypt"]
+      );
       
-      // XOR encryption
-      for (let i = 0; i < responseData.length; i++) {
-        ciphertext[i] = responseData[i] ^ keyMaterial[i % keyMaterial.length];
-      }
+      const encryptedData = await crypto.subtle.encrypt(
+        {
+          name: "AES-GCM",
+          iv: aeadNonce,
+          additionalData: new Uint8Array(0), // empty AAD per RFC 9458
+        },
+        aeadKeyObject,
+        responseData as BufferSource
+      );
       
-      // Add authentication tag
-      for (let i = 0; i < 16; i++) {
-        ciphertext[responseData.length + i] = keyMaterial[i] ^ derivedNonce[i % derivedNonce.length];
-      }
+      const ciphertext = new Uint8Array(encryptedData);
       
-      // Step 6: Return [response_nonce][ciphertext]
+      // 6. Return [response_nonce][ciphertext]
       const encapsulatedResponse = new Uint8Array(responseNonce.length + ciphertext.length);
       encapsulatedResponse.set(responseNonce, 0);
       encapsulatedResponse.set(ciphertext, responseNonce.length);

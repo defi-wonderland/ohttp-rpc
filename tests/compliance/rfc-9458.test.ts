@@ -89,11 +89,20 @@ describe("RFC 9458 Compliance - Key Configuration Format", () => {
     // Valid key ID lengths
     for (let len = 1; len <= 8; len++) {
       const keyId = crypto.getRandomValues(new Uint8Array(len));
-      expect(() => createTestKeyConfig(publicKey, keyId)).not.toThrow();
+      const config = createTestKeyConfig(publicKey, keyId);
+      expect(config.keyId.length).toBe(len);
+      expect(config.keyId).toEqual(keyId);
     }
     
-    // Invalid key ID lengths (0 bytes, >8 bytes) should be handled gracefully
-    // Note: createTestKeyConfig doesn't enforce this, but parseKeyConfig should
+    // Test that encoded configs can be parsed back correctly
+    const multiByteKeyId = crypto.getRandomValues(new Uint8Array(4));
+    const config = createTestKeyConfig(publicKey, multiByteKeyId);
+    const encoded = encodeOhttpKeys([config]);
+    const parsed = parseOhttpKeys(encoded);
+    
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0].keyId).toEqual(multiByteKeyId);
+    expect(parsed[0].keyId.length).toBe(4);
   });
 });
 
@@ -174,6 +183,48 @@ describe("RFC 9458 Compliance - Security Requirements", () => {
     const malformedConfig = new Uint8Array([0, 1]); // Too short
     
     expect(() => parseOhttpKeys(malformedConfig)).toThrow();
+  });
+
+  test("Section 4.1-4.2: HPKE encryption/decryption compliance", async () => {
+    // Test that HPKE operations follow RFC 9180 and work with RFC 9458
+    const { createHpkeEngine } = await import("../../packages/hpke-engine/src/index.js");
+    
+    const engine = createHpkeEngine();
+    const keyPair = await engine.generateKeyPair();
+    
+    // Test data
+    const plaintext = new TextEncoder().encode("Hello, OHTTP!");
+    const info = new TextEncoder().encode("test info");
+    
+    // Seal (encrypt)
+    const sealResult = await engine.sealBase(
+      keyPair.publicKey,
+      null,
+      plaintext,
+      info
+    );
+    
+    expect(sealResult.enc).toBeDefined();
+    expect(sealResult.ct).toBeDefined();
+    expect(sealResult.enc.length).toBe(32); // X25519 public key size
+    
+    // Open (decrypt)
+    const openResult = await engine.openBase(
+      keyPair.publicKey,
+      keyPair.privateKey,
+      null,
+      sealResult.enc,
+      sealResult.ct,
+      info
+    );
+    
+    expect(openResult.pt).toEqual(plaintext);
+    expect(openResult.context).toBeDefined();
+    
+    // Test HPKE context export (required for RFC 9458 response encryption)
+    const exportedSecret = await openResult.context.export("message/bhttp response", 16);
+    expect(exportedSecret).toBeDefined();
+    expect(exportedSecret.length).toBe(16);
   });
 
   test("Section 6.5.1: Date header format", () => {

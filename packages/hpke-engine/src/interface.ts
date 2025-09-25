@@ -11,6 +11,7 @@
 export interface HpkeSealResult {
   enc: Uint8Array;  // Encapsulated key
   ct: Uint8Array;   // Ciphertext
+  context?: HpkeContext; // HPKE sender context for RFC 9458 response decryption (optional for compatibility)
 }
 
 /**

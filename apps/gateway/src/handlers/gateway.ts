@@ -6,6 +6,7 @@ import { CT_OHTTP_REQ, CT_OHTTP_RES, OHTTP_PROBLEM_TYPES } from "@ohttp/shared";
 import { assertContentType, unwrapEncapsulatedRequest, createProblemResponse } from "@ohttp/core";
 import type { GatewayConfig } from "../env.js";
 import type { GatewayHpkeManager } from "../crypto/hpke.js";
+import type { HpkeContext } from "@ohttp/hpke-engine";
 import { validateInnerRequest, filterHeaders } from "../policy/allowlist.js";
 import { validateRequestSize } from "../policy/size.js";
 import { 
@@ -112,7 +113,8 @@ function validateDateHeader(headers: Record<string, string>, config: GatewayConf
 async function createDateErrorResponse(
   error: string,
   correctedDate: string,
-  hpkeManager: GatewayHpkeManager
+  hpkeManager: GatewayHpkeManager,
+  decryptResult: { context: HpkeContext; enc: Uint8Array }
 ): Promise<Response> {
   const { headers, body } = createProblemResponse(
     OHTTP_PROBLEM_TYPES.DATE_NOT_ACCEPTABLE,
@@ -134,7 +136,11 @@ async function createDateErrorResponse(
   const bhttpResponse = createBhttpResponse(400, headersObj, body);
   
   // Encrypt the response
-  const encapsulatedResponse = await hpkeManager.encryptResponse(bhttpResponse);
+  const encapsulatedResponse = await hpkeManager.encryptResponse(
+    bhttpResponse, 
+    decryptResult.context, 
+    decryptResult.enc
+  );
   
   return new Response(encapsulatedResponse as BodyInit, {
     status: 200,
@@ -156,6 +162,7 @@ export async function handleGateway(
 ): Promise<Response> {
   let encapsulatedRequest: Uint8Array | null = null;
   let decryptedRequest: Uint8Array | null = null;
+  let decryptResult: { plaintext: Uint8Array; context: HpkeContext; enc: Uint8Array } | null = null;
   
   try {
     // Validate content type
@@ -174,12 +181,13 @@ export async function handleGateway(
     const { encData, ctInfo } = unwrapEncapsulatedRequest(encapsulatedRequest);
     
     // Decrypt the request
-    decryptedRequest = await hpkeManager.decryptRequest(encData, ctInfo);
+    decryptResult = await hpkeManager.decryptRequest(encData, ctInfo);
+    decryptedRequest = decryptResult.plaintext;
     
     // Validate bHTTP format
     const bhttpValidation = validateBhttpRequest(decryptedRequest);
     if (!bhttpValidation.valid) {
-      return await createEncapsulatedErrorResponse(400, bhttpValidation.error || "Invalid bHTTP format", hpkeManager);
+      return await createEncapsulatedErrorResponse(400, bhttpValidation.error || "Invalid bHTTP format", hpkeManager, decryptResult);
     }
     
     // Process bHTTP request
@@ -191,20 +199,21 @@ export async function handleGateway(
       return await createDateErrorResponse(
         dateValidation.error || "Date not acceptable",
         dateValidation.correctedDate,
-        hpkeManager
+        hpkeManager,
+        decryptResult
       );
     }
     
     // Validate request against policy
     const policyValidation = validateInnerRequest(url, headers, body.length, config);
     if (!policyValidation.allowed) {
-      return await createEncapsulatedErrorResponse(403, policyValidation.reason || "Request not allowed", hpkeManager);
+      return await createEncapsulatedErrorResponse(403, policyValidation.reason || "Request not allowed", hpkeManager, decryptResult);
     }
     
     // Validate request size constraints
     const sizeValidation = validateRequestSize(url, headers, body.length, config);
     if (!sizeValidation.valid) {
-      return await createEncapsulatedErrorResponse(413, sizeValidation.reason || "Request too large", hpkeManager);
+      return await createEncapsulatedErrorResponse(413, sizeValidation.reason || "Request too large", hpkeManager, decryptResult);
     }
     
     // Filter headers to allowlist
@@ -227,8 +236,11 @@ export async function handleGateway(
     );
     
     // Encrypt response using RFC 9458 Section 4.2 method
-    // The HPKE context is automatically retained from decryptRequest
-    const encapsulatedResponse = await hpkeManager.encryptResponse(bhttpResponse);
+    const encapsulatedResponse = await hpkeManager.encryptResponse(
+      bhttpResponse, 
+      decryptResult.context, 
+      decryptResult.enc
+    );
     
     return new Response(encapsulatedResponse as BodyInit, {
       status: 200,
@@ -258,7 +270,7 @@ export async function handleGateway(
       }
     }
     
-    return await createEncapsulatedErrorResponse(status, message, hpkeManager);
+    return await createEncapsulatedErrorResponse(status, message, hpkeManager, decryptResult || undefined);
     
   } finally {
     // Zeroize sensitive data
@@ -278,16 +290,21 @@ export async function handleGateway(
 async function createEncapsulatedErrorResponse(
   status: number,
   message: string,
-  hpkeManager?: GatewayHpkeManager
+  hpkeManager?: GatewayHpkeManager,
+  decryptResult?: { context: HpkeContext; enc: Uint8Array }
 ): Promise<Response> {
   try {
     // Create bHTTP error response
     const bhttpError = createBhttpErrorResponse(status, message);
     
     // RFC 9458 Section 5.2: All gateway responses must be encapsulated
-    if (hpkeManager) {
+    if (hpkeManager && decryptResult) {
       try {
-        const encapsulatedResponse = await hpkeManager.encryptResponse(bhttpError);
+        const encapsulatedResponse = await hpkeManager.encryptResponse(
+          bhttpError, 
+          decryptResult.context, 
+          decryptResult.enc
+        );
         return new Response(encapsulatedResponse as BodyInit, {
           status: 200, // Always return 200 for OHTTP responses
           headers: {
@@ -297,27 +314,23 @@ async function createEncapsulatedErrorResponse(
         });
       } catch (encryptError) {
         console.error("Failed to encrypt error response:", encryptError);
-        // If encryption fails, we cannot return an encapsulated response
-        // This is a protocol violation, but necessary for debugging
+        // RFC 9458 Section 5.2: Cannot fallback to unencrypted responses
+        // If we cannot encrypt, we must return a generic error
+        throw new Error("Cannot encrypt response - HPKE context not available");
       }
     }
     
-    // Fallback: unencrypted bHTTP response (protocol violation)
-    // This should only happen during decryption failures
-    return new Response(bhttpError as BodyInit, {
-      status: 200,
-      headers: {
-        "content-type": CT_OHTTP_RES,
-        "content-length": bhttpError.length.toString(),
-      },
-    });
+    // RFC 9458 Section 5.2 violation: Cannot return unencrypted responses
+    // If no HPKE manager is available, we cannot process OHTTP requests
+    throw new Error("HPKE manager required for OHTTP gateway responses");
     
   } catch (error) {
     console.error("Failed to create encapsulated error response:", error);
     
-    // Last resort: plain HTTP error (major protocol violation)
-    return new Response(message, {
-      status,
+    // RFC 9458 compliant behavior: Return HTTP 500 for encryption failures
+    // This indicates a server-side issue, not a client request issue
+    return new Response("Internal Server Error - Cannot encrypt response", {
+      status: 500,
       headers: {
         "content-type": "text/plain",
       },
