@@ -37,10 +37,18 @@ function loadEnvFile(): void {
 }
 
 /**
- * Validate HPKE seed format and security
+ * Validate HPKE seed format and security, and convert to bytes
  */
-function validateHpkeSeed(seed: string): string {
-  // Check minimum length
+export function validateHpkeSeed(seed: string | Uint8Array): Uint8Array {
+  // If already bytes, validate and return
+  if (seed instanceof Uint8Array) {
+    if (seed.length !== 32) {
+      throw new Error("HPKE_SEED must be exactly 32 bytes");
+    }
+    return seed;
+  }
+  
+  // Check minimum length for string
   if (seed.length < 32) {
     throw new Error("HPKE_SEED must be at least 32 characters");
   }
@@ -69,7 +77,34 @@ function validateHpkeSeed(seed: string): string {
     throw new Error("HPKE_SEED should be base64url encoded (A-Z, a-z, 0-9, -, _)");
   }
   
-  return seed;
+  // Convert base64url to bytes
+  try {
+    // Add padding if needed
+    let padded = seed;
+    while (padded.length % 4) {
+      padded += '=';
+    }
+    
+    // Convert base64url to base64
+    const base64 = padded.replace(/-/g, '+').replace(/_/g, '/');
+    
+    // Decode to bytes
+    const decoded = atob(base64);
+    const bytes = new Uint8Array(decoded.length);
+    for (let i = 0; i < decoded.length; i++) {
+      bytes[i] = decoded.charCodeAt(i);
+    }
+    
+    // Ensure we have exactly 32 bytes (pad or truncate if needed)
+    const result = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) {
+      result[i] = bytes[i % bytes.length] || 0;
+    }
+    
+    return result;
+  } catch (error) {
+    throw new Error(`Invalid HPKE_SEED format: ${error}`);
+  }
 }
 
 /**
@@ -85,7 +120,7 @@ const envSchema = z.object({
   // HPKE configuration
   HPKE_SEED: z.string()
     .min(1, "HPKE_SEED is required")
-    .transform(validateHpkeSeed) as z.ZodType<Uint8Array>,
+    .transform(validateHpkeSeed),
   HPKE_SUITE: z.string().default("DHKEM_X25519_HKDF_SHA256+HKDF_SHA256+AES_128_GCM"),
   
   // Policy configuration
