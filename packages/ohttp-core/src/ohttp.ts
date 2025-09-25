@@ -77,21 +77,32 @@ export function wrapEncapsulatedResponse(encData: Uint8Array): EncapsulatedRespo
 /**
  * Parse OHTTP key configuration document (application/ohttp-keys)
  * 
- * Format (per RFC 9458):
- * - Key configurations are length-prefixed
+ * Format (per RFC 9458 Section 3.1):
+ * - [2-byte length in network byte order][config1][config2]...
  * - Each config: key_id (1-8 bytes) + kem_id (2 bytes) + kdf_id (2 bytes) + aead_id (2 bytes) + public_key
  */
 export function parseOhttpKeys(keysDocument: OhttpKeysDocument): OhttpKeyConfig[] {
-  const configs: OhttpKeyConfig[] = [];
-  let offset = 0;
+  if (keysDocument.length < 2) {
+    throw new Error("OHTTP keys document too short");
+  }
   
+  // RFC 9458: First 2 bytes are length in network byte order
+  const length = (keysDocument[0] << 8) | keysDocument[1];
+  
+  if (length !== keysDocument.length - 2) {
+    throw new Error(`Length mismatch: expected ${length}, got ${keysDocument.length - 2}`);
+  }
+  
+  const configs: OhttpKeyConfig[] = [];
+  let offset = 2; // Skip the length field
+  
+  // Parse individual configurations until we've consumed all data
   while (offset < keysDocument.length) {
     try {
-      const { data: configBytes, consumed } = decodeLengthPrefixed(keysDocument, offset);
-      offset += consumed;
-      
-      const config = parseKeyConfig(configBytes);
+      // Parse the configuration and get the consumed bytes
+      const { config, consumed } = parseKeyConfigWithSize(keysDocument.slice(offset));
       configs.push(config);
+      offset += consumed;
     } catch (error) {
       throw new Error(`Failed to parse OHTTP key config at offset ${offset}: ${error}`);
     }
@@ -105,6 +116,60 @@ export function parseOhttpKeys(keysDocument: OhttpKeysDocument): OhttpKeyConfig[
 }
 
 /**
+ * Parse a single key configuration from bytes and return consumed size
+ */
+function parseKeyConfigWithSize(configBytes: Uint8Array): { config: OhttpKeyConfig; consumed: number } {
+  // We need to determine the size of just the first configuration in the buffer
+  // Parse the configuration to get the Key ID length and symmetric algorithms length
+  
+  if (configBytes.length < 41) {
+    throw new Error("Key config too short for RFC 9458 format");
+  }
+  
+  // We need to find where the symmetric algorithms length is for the FIRST config
+  // Since we don't know the Key ID length yet, we need to try different possibilities
+  
+  let keyIdLength = 1;
+  let validConfig = null;
+  let configSize = 0;
+  
+  // Try Key ID lengths from 1 to 8 bytes
+  for (keyIdLength = 1; keyIdLength <= 8 && keyIdLength <= configBytes.length - 38; keyIdLength++) {
+    try {
+      const minConfigSize = keyIdLength + 2 + 32 + 2 + 4; // keyId + kemId + publicKey + symAlgLen + 4-byte symAlg
+      
+      if (configBytes.length < minConfigSize) {
+        continue;
+      }
+      
+      // Check if the symmetric algorithms length at this position makes sense
+      const symAlgLengthOffset = keyIdLength + 2 + 32;
+      const symAlgLength = (configBytes[symAlgLengthOffset] << 8) | configBytes[symAlgLengthOffset + 1];
+      
+      if (symAlgLength >= 4 && symAlgLength % 4 === 0) {
+        configSize = keyIdLength + 2 + 32 + 2 + symAlgLength;
+        
+        if (configSize <= configBytes.length) {
+          // Try to parse with this configuration size
+          const configSlice = configBytes.slice(0, configSize);
+          validConfig = parseKeyConfig(configSlice);
+          break;
+        }
+      }
+    } catch {
+      // Continue trying other Key ID lengths
+      continue;
+    }
+  }
+  
+  if (!validConfig) {
+    throw new Error("Could not determine valid key configuration structure");
+  }
+  
+  return { config: validConfig, consumed: configSize };
+}
+
+/**
  * Parse a single key configuration from bytes
  */
 function parseKeyConfig(configBytes: Uint8Array): OhttpKeyConfig {
@@ -113,15 +178,31 @@ function parseKeyConfig(configBytes: Uint8Array): OhttpKeyConfig {
     throw new Error("Key config too short for RFC 9458 format");
   }
   
+  // First, determine the Key ID length by working backwards from the symmetric algorithms length
+  // The symmetric algorithms length is at a known offset from the end
+  if (configBytes.length < 6) { // Need at least 2 bytes symAlgLen + 4 bytes symAlg
+    throw new Error("Key config truncated at symmetric algorithms length");
+  }
+  
+  const symAlgLengthOffset = configBytes.length - 6; // 2 bytes before the 4-byte symmetric algorithms
+  const symAlgLength = (configBytes[symAlgLengthOffset] << 8) | configBytes[symAlgLengthOffset + 1];
+  
+  if (symAlgLength < 4 || symAlgLength % 4 !== 0) {
+    throw new Error("Invalid symmetric algorithms length");
+  }
+  
+  // Calculate Key ID length: total - (2 bytes KEM + 32 bytes pubkey + 2 bytes symAlgLen + symAlgLength)
+  const keyIdLength = configBytes.length - (2 + 32 + 2 + symAlgLength);
+  
+  if (keyIdLength < 1 || keyIdLength > 8) {
+    throw new Error(`Invalid Key ID length: ${keyIdLength} (must be 1-8 bytes)`);
+  }
+  
   let offset = 0;
   
-  // Key Identifier (8 bits) - RFC 9458 Section 3.1
-  // Note: RFC 9458 specifies Key ID is exactly 1 byte (8 bits)
-  if (offset + 1 > configBytes.length) {
-    throw new Error("Key config truncated at Key ID");
-  }
-  const keyId = new Uint8Array([configBytes[offset]]);
-  offset += 1;
+  // Key Identifier (1-8 bytes) - RFC 9458 Section 3.1
+  const keyId = configBytes.slice(offset, offset + keyIdLength);
+  offset += keyIdLength;
   
   // HPKE KEM ID (16 bits, network byte order)
   if (offset + 2 > configBytes.length) {
@@ -144,14 +225,14 @@ function parseKeyConfig(configBytes: Uint8Array): OhttpKeyConfig {
     throw new Error("Key config truncated at symmetric algorithms length");
   }
   
-  const symAlgLength = (configBytes[offset] << 8) | configBytes[offset + 1];
+  const actualSymAlgLength = (configBytes[offset] << 8) | configBytes[offset + 1];
   offset += 2;
   
-  if (symAlgLength < 4 || symAlgLength % 4 !== 0) {
+  if (actualSymAlgLength < 4 || actualSymAlgLength % 4 !== 0) {
     throw new Error("Invalid symmetric algorithms length");
   }
   
-  if (offset + symAlgLength > configBytes.length) {
+  if (offset + actualSymAlgLength > configBytes.length) {
     throw new Error("Key config truncated at symmetric algorithms");
   }
   
@@ -195,11 +276,18 @@ function mapSuiteIds(kemId: number, kdfId: number, aeadId: number): HpkeSuite {
 }
 
 /**
- * Encode OHTTP key configuration to binary format
+ * Encode OHTTP key configuration to binary format (RFC 9458 Section 3.1)
  */
 export function encodeOhttpKeys(configs: OhttpKeyConfig[]): OhttpKeysDocument {
   const configBytes = configs.map(encodeKeyConfig);
-  return concatBytes(...configBytes.map(encodeLengthPrefixed));
+  const allConfigs = concatBytes(...configBytes);
+  
+  // RFC 9458 Section 3.1: [2-byte length in network byte order][config1][config2]...
+  // Length is the total size of all config data (excluding the length field itself)
+  const length = allConfigs.length;
+  const lengthBytes = new Uint8Array([length >> 8, length & 0xff]);
+  
+  return concatBytes(lengthBytes, allConfigs);
 }
 
 /**
@@ -221,9 +309,9 @@ function encodeKeyConfig(config: OhttpKeyConfig): Uint8Array {
   
   const parts: Uint8Array[] = [];
   
-  // Key Identifier (8 bits) - RFC 9458 Section 3.1
-  if (keyId.length !== 1) {
-    throw new Error("Key ID must be exactly 1 byte per RFC 9458");
+  // Key Identifier (1-8 bytes) - RFC 9458 Section 3.1
+  if (keyId.length < 1 || keyId.length > 8) {
+    throw new Error("Key ID must be 1-8 bytes per RFC 9458 Section 3.1");
   }
   parts.push(keyId);
   

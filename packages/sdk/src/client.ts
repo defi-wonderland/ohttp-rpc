@@ -22,6 +22,7 @@ import {
 } from "@ohttp/core";
 import { loadKeyConfigFromUrl, parseKeyConfigFromBytes, LoadKeyConfigOptions } from "./keys.js";
 import { 
+  OhttpError,
   ConfigError, 
   CryptoError, 
   RelayNetworkError, 
@@ -117,11 +118,8 @@ export class OhttpClient {
       // Encode inner request as bHTTP
       const bhttpRequest = encodeRequest(innerRequest);
       
-      // Encapsulate with HPKE
-      const encapsulatedRequest = await this.encapsulateRequest(
-        bhttpRequest,
-        innerRequest.paddingBytes
-      );
+      // Encapsulate with HPKE (RFC 9458 compliant - no padding at OHTTP level)
+      const encapsulatedRequest = await this.encapsulateRequest(bhttpRequest);
       
       // Send to relay
       const relayResponse = await this.sendToRelay(
@@ -232,21 +230,11 @@ export class OhttpClient {
   }
   
   /**
-   * Encapsulate bHTTP request using HPKE
+   * Encapsulate bHTTP request using HPKE (RFC 9458 Section 4.1)
    */
-  private async encapsulateRequest(
-    bhttpRequest: Uint8Array,
-    paddingBytes?: number
-  ): Promise<Uint8Array> {
+  private async encapsulateRequest(bhttpRequest: Uint8Array): Promise<Uint8Array> {
     try {
-      // Add padding if requested
-      let requestWithPadding = bhttpRequest;
-      if (paddingBytes && paddingBytes > 0) {
-        const padding = crypto.getRandomValues(new Uint8Array(paddingBytes));
-        requestWithPadding = new Uint8Array(bhttpRequest.length + padding.length);
-        requestWithPadding.set(bhttpRequest);
-        requestWithPadding.set(padding, bhttpRequest.length);
-      }
+      // RFC 9458: No padding at OHTTP level - padding should be at bHTTP level
       
       // Create HPKE public key object
       const hpkePublicKey = {
@@ -258,7 +246,7 @@ export class OhttpClient {
       const sealResult = await this.engine.sealBase(
         hpkePublicKey,
         null, // no additional authenticated data
-        requestWithPadding,
+        bhttpRequest,
         this.keyConfig.keyId // use key ID as info parameter
       );
       
@@ -458,9 +446,11 @@ export class OhttpClient {
           }
           
         } catch (decryptError) {
-          // If decryption fails, assume it's already decapsulated
-          console.warn("RFC 9458 response decryption failed, trying as unencrypted:", decryptError);
-          decryptedData = encapsulatedResponse;
+          // RFC 9458 decryption failure should be fatal - never fallback to unencrypted
+          throw new OhttpError(
+            `RFC 9458 response decryption failed: ${decryptError}`,
+            "DECRYPTION_ERROR"
+          );
         }
       } else {
         // Response too short to be encrypted, use as-is

@@ -47,15 +47,11 @@ describe("Gateway Server - Configuration", () => {
       expect(error).toBeInstanceOf(Error);
     }
     
-    // Short seed (gets padded to 32 bytes)
-    const shortSeedResult = validateHpkeSeed("short");
-    expect(shortSeedResult).toBeInstanceOf(Uint8Array);
-    expect(shortSeedResult.length).toBe(32);
+    // Short seed should be rejected for security
+    expect(() => validateHpkeSeed("short")).toThrow("HPKE_SEED must be at least 32 characters");
     
-    // Empty seed (gets padded to 32 bytes)
-    const emptySeedResult = validateHpkeSeed("");
-    expect(emptySeedResult).toBeInstanceOf(Uint8Array);
-    expect(emptySeedResult.length).toBe(32);
+    // Empty seed should be rejected for security
+    expect(() => validateHpkeSeed("")).toThrow("HPKE_SEED must be at least 32 characters");
   });
 });
 

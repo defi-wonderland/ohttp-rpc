@@ -20,10 +20,21 @@ export function isTargetAllowed(url: string, config: GatewayConfig): boolean {
     // Security: Block path traversal attempts and sensitive paths
     const normalizedPath = targetUrl.pathname.replace(/\/+/g, "/"); // Normalize multiple slashes
     
-    // Decode URL-encoded characters to catch encoded path traversal
-    let decodedPath;
+    // Recursively decode URL-encoded characters to catch double/triple encoding
+    let decodedPath = normalizedPath;
     try {
-      decodedPath = decodeURIComponent(normalizedPath);
+      // Keep decoding until no more changes (to catch double/triple encoding)
+      let previousPath;
+      let decodeAttempts = 0;
+      do {
+        previousPath = decodedPath;
+        decodedPath = decodeURIComponent(decodedPath);
+        decodeAttempts++;
+        // Prevent infinite loops with excessive encoding
+        if (decodeAttempts > 5) {
+          return false; // Suspicious excessive encoding
+        }
+      } while (decodedPath !== previousPath);
     } catch {
       // Invalid encoding, reject
       return false;
@@ -32,9 +43,27 @@ export function isTargetAllowed(url: string, config: GatewayConfig): boolean {
     // Check for path traversal in both encoded and decoded forms
     const pathsToCheck = [normalizedPath, decodedPath];
     for (const path of pathsToCheck) {
+      // Standard path traversal patterns
       if (path.includes("/../") || path.includes("..\\") || 
           path.endsWith("/..") || path === ".." ||
           path.includes("%2e%2e") || path.includes("%2E%2E")) {
+        return false;
+      }
+      
+      // Advanced path traversal patterns
+      if (path.includes("....//") || // Multiple dots with double slash
+          path.includes("..../") ||  // Multiple dots with slash
+          path.match(/\.{3,}/) ||    // Three or more consecutive dots
+          path.includes("%252e") ||  // Double-encoded dots
+          path.includes("%252E") ||
+          path.includes("%c0%af") || // UTF-8 overlong encoding for '/'
+          path.includes("%C0%AF") ||
+          path.includes("%ef%bc%8f") || // Unicode full-width solidus
+          path.includes("%EF%BC%8F") ||
+          path.includes("／") ||     // Full-width solidus (decoded)
+          path.match(/\.\.[\/\\]/) ||  // Dot-dot with any slash type
+          path.match(/windows[\/\\]system32/) || // Windows system paths
+          path.match(/system32[\/\\]config/)) {  // Windows config paths
         return false;
       }
     }
@@ -60,21 +89,41 @@ export function isTargetAllowed(url: string, config: GatewayConfig): boolean {
     }
     
     // Check against allowed targets
+    const fullUrl = targetUrl.toString();
     const origin = `${targetUrl.protocol}//${targetUrl.host}`;
     
     return config.ALLOWED_TARGETS.some(allowedTarget => {
-      // Exact match
-      if (allowedTarget === origin) {
-        return true;
+      try {
+        const allowedUrl = new URL(allowedTarget);
+        const allowedOrigin = `${allowedUrl.protocol}//${allowedUrl.host}`;
+        
+        // If allowed target has no path or just "/", match by origin
+        if (allowedUrl.pathname === "/" || allowedUrl.pathname === "") {
+          return origin === allowedOrigin;
+        }
+        
+        // If allowed target has a path, the request URL must start with that path
+        if (origin === allowedOrigin) {
+          return targetUrl.pathname.startsWith(allowedUrl.pathname);
+        }
+        
+        return false;
+      } catch {
+        // Fallback to old logic for non-URL targets (like wildcards)
+        
+        // Exact match
+        if (allowedTarget === origin) {
+          return true;
+        }
+        
+        // Prefix match (for subdomain wildcards)
+        if (allowedTarget.endsWith("*")) {
+          const prefix = allowedTarget.slice(0, -1);
+          return origin.startsWith(prefix);
+        }
+        
+        return false;
       }
-      
-      // Prefix match (for subdomain wildcards)
-      if (allowedTarget.endsWith("*")) {
-        const prefix = allowedTarget.slice(0, -1);
-        return origin.startsWith(prefix);
-      }
-      
-      return false;
     });
     
   } catch (error) {

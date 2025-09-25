@@ -82,12 +82,36 @@ test("bHTTP with padding", () => {
   const encoded = encodeRequest(request);
   const decoded = decodeRequest(encoded);
   
-  // Body should include the original data plus padding
-  expect(decoded.body?.length).toBe(request.body!.length + 64);
+  // For JSON content, padding should be skipped to prevent corruption
+  // Body should be the original data without padding
+  expect(decoded.body?.length).toBe(request.body!.length);
+  
+  // Data should be unchanged (no padding added to JSON)
+  if (decoded.body && request.body) {
+    expect(decoded.body).toEqual(new Uint8Array(request.body!));
+  }
+});
+
+test("bHTTP with padding for non-JSON content", () => {
+  const request: InnerRequest = {
+    method: "POST",
+    url: "https://example.com/api/data",
+    headers: {
+      "content-type": "text/plain", // Non-JSON content
+    },
+    body: new TextEncoder().encode("some plain text data"),
+    paddingBytes: 32,
+  };
+  
+  const encoded = encodeRequest(request);
+  const decoded = decodeRequest(encoded);
+  
+  // For non-JSON content, padding should be applied
+  expect(decoded.body?.length).toBe(request.body!.length + 32);
   
   // Original data should be at the beginning
   if (decoded.body && request.body) {
     const originalData = decoded.body.slice(0, request.body.length);
-          expect(originalData).toEqual(new Uint8Array(request.body!));
+    expect(originalData).toEqual(new Uint8Array(request.body!));
   }
 });

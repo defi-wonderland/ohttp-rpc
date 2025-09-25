@@ -100,11 +100,20 @@ export function encodeRequest(request: InnerRequest): Uint8Array {
     parts.push(encodeLengthPrefixed(stringToBytes(value)));
   }
   
-  // Body (with optional padding)
+  // Body (with optional padding - RFC 9292 compliant)
   let bodyWithPadding = body;
   if (paddingBytes > 0) {
-    const padding = crypto.getRandomValues(new Uint8Array(paddingBytes));
-    bodyWithPadding = concatBytes(body, padding);
+    // Check if this is JSON content that shouldn't be padded
+    const contentType = headers['content-type'] || '';
+    const isJsonContent = contentType.includes('application/json');
+    
+    if (!isJsonContent) {
+      // Safe to add padding for non-JSON content
+      const padding = crypto.getRandomValues(new Uint8Array(paddingBytes));
+      bodyWithPadding = concatBytes(body, padding);
+    }
+    // For JSON content, skip body padding to avoid corrupting the JSON
+    // Privacy protection relies on HPKE encryption and message batching
   }
   parts.push(encodeLengthPrefixed(bodyWithPadding));
   

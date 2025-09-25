@@ -138,7 +138,12 @@ describe("Testing Campaign Showcase", () => {
       
       const bodyText = new TextDecoder().decode(request.body!);
       const jsonRpc = JSON.parse(bodyText);
-      AssertionHelpers.assertValidJsonRpc(jsonRpc);
+      
+      // Validate JSON-RPC request structure
+      expect(jsonRpc.jsonrpc).toBe("2.0");
+      expect(typeof jsonRpc.method).toBe("string");
+      expect(Array.isArray(jsonRpc.params)).toBe(true);
+      expect(jsonRpc.id).toBeDefined();
       
       console.log(`  ✅ ${method} request: ${bodyText.length} bytes`);
     }
@@ -414,16 +419,23 @@ describe("Testing Campaign Showcase", () => {
       console.log(`  ✅ End-to-end validation successful`);
       
     } catch (error) {
-      console.log(`  ⚠️ E2E integration limited by simplified implementation: ${(error as Error).message}`);
+      console.log(`  ❌ E2E integration failed: ${(error as Error).message}`);
       
-      // Still validate individual components work
-      const basicRequest = RequestFactory.jsonRpc();
-      const basicResponse = ResponseFactory.jsonRpc();
+      // Test individual components to help diagnose the issue
+      try {
+        const basicRequest = RequestFactory.jsonRpc();
+        const basicResponse = ResponseFactory.jsonRpc();
+        
+        AssertionHelpers.assertValidInnerRequest(basicRequest);
+        AssertionHelpers.assertValidInnerResponse(basicResponse);
+        
+        console.log(`  ✅ Individual components work - E2E integration issue`);
+      } catch (componentError) {
+        console.log(`  ❌ Component validation also failed: ${(componentError as Error).message}`);
+      }
       
-      AssertionHelpers.assertValidInnerRequest(basicRequest);
-      AssertionHelpers.assertValidInnerResponse(basicResponse);
-      
-      console.log(`  ✅ Component validation successful`);
+      // Don't hide the E2E failure
+      throw error;
     }
   });
 

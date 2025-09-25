@@ -197,9 +197,11 @@ export class KeyConfigFactory {
         keyId = keyId || keyPair.publicKey.kid;
         publicKey = publicKey || keyPair.publicKey.bytes;
       } catch (error) {
-        // Fallback for simplified implementation
-        keyId = keyId || new Uint8Array([Math.floor(Math.random() * 256)]);
-        publicKey = publicKey || DataGenerator.randomBytes(32);
+        console.warn(`⚠️ HPKE key generation failed, using provided fallback data: ${(error as Error).message}`);
+        // Only use fallback if explicitly provided
+        if (!keyId || !publicKey) {
+          throw new Error(`HPKE key generation failed and no fallback data provided: ${(error as Error).message}`);
+        }
       }
     }
     
@@ -624,6 +626,10 @@ export class AssertionHelpers {
     expect(request.method).toBeDefined();
     expect(typeof request.method).toBe("string");
     
+    // Method should be a valid HTTP method
+    const validMethods = ['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS', 'PATCH'];
+    expect(validMethods).toContain(request.method.toUpperCase());
+    
     expect(request.url).toBeDefined();
     expect(typeof request.url).toBe("string");
     
@@ -902,13 +908,4 @@ export class TestEnvironment {
 // Export all utilities
 // =============================================================================
 
-export {
-  DataGenerator,
-  KeyConfigFactory,
-  RequestFactory,
-  ResponseFactory,
-  TestScenarios,
-  AssertionHelpers,
-  BenchmarkUtils,
-  TestEnvironment
-};
+// All classes are already exported individually above

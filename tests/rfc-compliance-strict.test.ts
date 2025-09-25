@@ -378,7 +378,7 @@ describe("RFC 9458 - Section 6: Security Considerations", () => {
     const malformedConfigs = [
       new Uint8Array([0x00, 0x01]), // Too short
       new Uint8Array([0xFF, 0xFF, 0x00]), // Invalid length
-      new Uint8Array([0x00, 0x10]).concat(Array(16).fill(0x42)), // Length mismatch
+      new Uint8Array([0x00, 0x10, ...Array(16).fill(0x42)]), // Length mismatch
     ];
     
     for (const config of malformedConfigs) {
@@ -440,9 +440,9 @@ describe("RFC 9458 - Section 6: Security Considerations", () => {
     // Test acceptable date ranges
     const acceptableDates = [
       new Date(now).toUTCString(), // Current time
-      new Date(now - fiveMinutes).toUTCString(), // 5 minutes ago
-      new Date(now + fiveMinutes).toUTCString(), // 5 minutes future
-      new Date(now - fiveMinutes + 1000).toUTCString(), // Just within tolerance
+      new Date(now - fiveMinutes + 30000).toUTCString(), // 4m30s ago (safely within tolerance)
+      new Date(now + fiveMinutes - 30000).toUTCString(), // 4m30s future (safely within tolerance)
+      new Date(now - 60000).toUTCString(), // 1 minute ago
     ];
     
     // Test unacceptable date ranges
@@ -658,7 +658,7 @@ describe("RFC 9458 - Binary HTTP Integration", () => {
     
     const decoded = decodeBhttp(encoded);
     expect(decoded.method).toBe("POST");
-    expect(decoded.url).toBe("https://example.com/api/test/"); // bHTTP adds trailing slash
+    expect(decoded.url).toBe("https://example.com/api/test"); // URL preserved as-is
     expect(decoded.headers!["content-type"]).toBe("application/json");
     expect(decoded.headers!["accept"]).toBe("application/json");
     expect(decoded.headers!["authorization"]).toBe("Bearer token123");

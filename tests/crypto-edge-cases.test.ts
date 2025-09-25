@@ -471,7 +471,7 @@ describe("Crypto - Key Configuration Edge Cases", () => {
     }
   });
 
-  test("Multiple key configurations with conflicts", () => {
+  test("Multiple key configurations with conflicts", async () => {
     const hpkeEngine = createHpkeEngine();
     
     // Create multiple key configs with potential conflicts
