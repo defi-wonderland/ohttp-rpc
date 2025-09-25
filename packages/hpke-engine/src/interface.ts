@@ -14,10 +14,25 @@ export interface HpkeSealResult {
 }
 
 /**
+ * HPKE Context for RFC 9458 compliance
+ * Represents the receiver context from SetupBaseR() that can export secrets
+ */
+export interface HpkeContext {
+  /**
+   * Export secret from HPKE context per RFC 9458 Section 4.4
+   * @param exporterContext - Context string for export (e.g., "message/bhttp response")
+   * @param length - Length of secret to export in bytes
+   * @returns Exported secret
+   */
+  export(exporterContext: string, length: number): Promise<Uint8Array>;
+}
+
+/**
  * Result of HPKE open operation
  */
 export interface HpkeOpenResult {
   pt: Uint8Array;   // Plaintext
+  context: HpkeContext; // HPKE receiver context for RFC 9458 response encryption
 }
 
 /**
@@ -98,7 +113,7 @@ export interface HpkeEngine {
   /**
    * HPKE Base Mode Open
    * 
-   * Decrypts ciphertext using HPKE base mode.
+   * Decrypts ciphertext using HPKE base mode and returns context for RFC 9458.
    * 
    * @param pk - Recipient's public key (for verification)
    * @param sk - Recipient's private key
@@ -106,7 +121,7 @@ export interface HpkeEngine {
    * @param enc - Encapsulated key from seal operation
    * @param ct - Ciphertext from seal operation
    * @param info - Application-specific info parameter (must match seal)
-   * @returns Promise resolving to decrypted plaintext
+   * @returns Promise resolving to decrypted plaintext and HPKE context
    */
   openBase(
     pk: HpkePublicKey,
@@ -116,6 +131,27 @@ export interface HpkeEngine {
     ct: Uint8Array,
     info?: Uint8Array
   ): Promise<HpkeOpenResult>;
+
+  /**
+   * KDF Extract operation per RFC 5869
+   * Used for RFC 9458 response encryption key derivation
+   * 
+   * @param salt - Salt value (can be zero-length)
+   * @param ikm - Input keying material
+   * @returns Pseudo-random key
+   */
+  kdfExtract(salt: Uint8Array, ikm: Uint8Array): Promise<Uint8Array>;
+
+  /**
+   * KDF Expand operation per RFC 5869
+   * Used for RFC 9458 response encryption key derivation
+   * 
+   * @param prk - Pseudo-random key from Extract
+   * @param info - Context and application specific info
+   * @param length - Length of output keying material in bytes
+   * @returns Output keying material
+   */
+  kdfExpand(prk: Uint8Array, info: string, length: number): Promise<Uint8Array>;
 }
 
 /**

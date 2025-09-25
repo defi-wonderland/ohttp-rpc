@@ -57,8 +57,9 @@ export function unwrapEncapsulatedRequest(
   // the wrapped data is already in the correct OHTTP format: [key_id_len][key_id][enc][ciphertext]
   // Just return it as-is without trying to parse context info
   
-  // TODO: In the future, we might need to detect and handle multi-key scenarios
-  // with context info format: [ctinfo_len][ctinfo][ohttp_request]
+  // NOTE: Multi-key scenarios with context info are not currently supported
+  // Future enhancement: detect and handle format [ctinfo_len][ctinfo][ohttp_request]
+  // Current implementation supports single-key scenarios per RFC 9458
   
   return { encData: wrapped };
 }
@@ -107,28 +108,18 @@ export function parseOhttpKeys(keysDocument: OhttpKeysDocument): OhttpKeyConfig[
  * Parse a single key configuration from bytes
  */
 function parseKeyConfig(configBytes: Uint8Array): OhttpKeyConfig {
-  if (configBytes.length < 7) {
-    throw new Error("Key config too short");
+  // Minimum: 1 byte key_id + 2 bytes kem_id + 32 bytes public_key + 2 bytes sym_alg_len + 4 bytes sym_alg = 41 bytes
+  if (configBytes.length < 41) {
+    throw new Error("Key config too short for RFC 9458 format");
   }
   
   let offset = 0;
   
-  // Key ID length (1 byte) + Key ID (1-8 bytes)
-  const keyIdLength = configBytes[offset];
+  // Key Identifier (8 bits) - RFC 9458 Section 3.1
+  const keyId = new Uint8Array([configBytes[offset]]);
   offset += 1;
   
-  if (keyIdLength < 1 || keyIdLength > 8) {
-    throw new Error(`Invalid key ID length: ${keyIdLength}`);
-  }
-  
-  if (offset + keyIdLength > configBytes.length) {
-    throw new Error("Key config truncated at key ID");
-  }
-  
-  const keyId = configBytes.slice(offset, offset + keyIdLength);
-  offset += keyIdLength;
-  
-  // KEM ID (2 bytes, big-endian)
+  // HPKE KEM ID (16 bits, network byte order)
   if (offset + 2 > configBytes.length) {
     throw new Error("Key config truncated at KEM ID");
   }
@@ -136,28 +127,36 @@ function parseKeyConfig(configBytes: Uint8Array): OhttpKeyConfig {
   const kemId = (configBytes[offset] << 8) | configBytes[offset + 1];
   offset += 2;
   
-  // KDF ID (2 bytes, big-endian)
-  if (offset + 2 > configBytes.length) {
-    throw new Error("Key config truncated at KDF ID");
+  // HPKE Public Key (32 bytes for X25519)
+  if (offset + 32 > configBytes.length) {
+    throw new Error("Key config truncated at public key");
   }
   
+  const publicKey = configBytes.slice(offset, offset + 32);
+  offset += 32;
+  
+  // HPKE Symmetric Algorithms Length (16 bits)
+  if (offset + 2 > configBytes.length) {
+    throw new Error("Key config truncated at symmetric algorithms length");
+  }
+  
+  const symAlgLength = (configBytes[offset] << 8) | configBytes[offset + 1];
+  offset += 2;
+  
+  if (symAlgLength < 4 || symAlgLength % 4 !== 0) {
+    throw new Error("Invalid symmetric algorithms length");
+  }
+  
+  if (offset + symAlgLength > configBytes.length) {
+    throw new Error("Key config truncated at symmetric algorithms");
+  }
+  
+  // Parse first KDF+AEAD pair (we only support one for now)
   const kdfId = (configBytes[offset] << 8) | configBytes[offset + 1];
   offset += 2;
   
-  // AEAD ID (2 bytes, big-endian)
-  if (offset + 2 > configBytes.length) {
-    throw new Error("Key config truncated at AEAD ID");
-  }
-  
   const aeadId = (configBytes[offset] << 8) | configBytes[offset + 1];
   offset += 2;
-  
-  // Public key (remaining bytes)
-  const publicKey = configBytes.slice(offset);
-  
-  if (publicKey.length === 0) {
-    throw new Error("Empty public key");
-  }
   
   // Map numeric IDs to suite names
   const suite = mapSuiteIds(kemId, kdfId, aeadId);
@@ -218,21 +217,25 @@ function encodeKeyConfig(config: OhttpKeyConfig): Uint8Array {
   
   const parts: Uint8Array[] = [];
   
-  // Key ID length + Key ID
-  parts.push(new Uint8Array([keyId.length]));
+  // Key Identifier (8 bits) - RFC 9458 Section 3.1
+  if (keyId.length !== 1) {
+    throw new Error("Key ID must be exactly 1 byte per RFC 9458");
+  }
   parts.push(keyId);
   
-  // KEM ID (2 bytes, big-endian)
+  // HPKE KEM ID (16 bits, network byte order)
   parts.push(new Uint8Array([kemId >> 8, kemId & 0xff]));
   
-  // KDF ID (2 bytes, big-endian)
-  parts.push(new Uint8Array([kdfId >> 8, kdfId & 0xff]));
-  
-  // AEAD ID (2 bytes, big-endian)
-  parts.push(new Uint8Array([aeadId >> 8, aeadId & 0xff]));
-  
-  // Public key
+  // HPKE Public Key (Npk * 8 bits - 32 bytes for X25519)
   parts.push(publicKey);
+  
+  // HPKE Symmetric Algorithms Length (16 bits) - 4 bytes for one KDF+AEAD pair
+  const symAlgLength = 4; // 2 bytes KDF ID + 2 bytes AEAD ID
+  parts.push(new Uint8Array([symAlgLength >> 8, symAlgLength & 0xff]));
+  
+  // HPKE Symmetric Algorithms: KDF ID (16 bits) + AEAD ID (16 bits)
+  parts.push(new Uint8Array([kdfId >> 8, kdfId & 0xff])); // KDF ID
+  parts.push(new Uint8Array([aeadId >> 8, aeadId & 0xff])); // AEAD ID
   
   return concatBytes(...parts);
 }

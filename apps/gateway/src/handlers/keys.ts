@@ -46,7 +46,7 @@ export async function handleOhttpKeys(
     const etag = await generateETag(keysDocument);
     headers.set("etag", etag);
     
-    return new Response(keysDocument, {
+    return new Response(keysDocument as BodyInit, {
       status: 200,
       headers,
     });

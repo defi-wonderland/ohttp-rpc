@@ -22,26 +22,18 @@ import { forwardToUpstream, createUpstreamErrorResponse } from "../http/forward.
  */
 function extractEphemeralKey(encapsulatedRequest: Uint8Array): Uint8Array {
   try {
-    // Parse OHTTP request format: [key_id_len][key_id][enc][ciphertext]
-    if (encapsulatedRequest.length < 1) {
-      throw new Error("Invalid OHTTP request: too short");
+    // Parse OHTTP request format per RFC 9458 Section 4.1:
+    // [Key Identifier (8)][HPKE KEM ID (16)][HPKE KDF ID (16)][HPKE AEAD ID (16)][enc][ciphertext]
+    
+    if (encapsulatedRequest.length < 7 + 32) { // 7 bytes header + 32 bytes enc minimum
+      throw new Error("Invalid OHTTP request: too short for RFC 9458 format");
     }
     
-    let offset = 0;
-    const keyIdLen = encapsulatedRequest[offset++];
+    // Skip the header: 1 byte key_id + 2 bytes kem_id + 2 bytes kdf_id + 2 bytes aead_id = 7 bytes
+    const headerSize = 7;
     
-    if (offset + keyIdLen >= encapsulatedRequest.length) {
-      throw new Error("Invalid OHTTP request: key_id too long");
-    }
-    
-    offset += keyIdLen; // Skip key_id
-    
-    // Extract enc (ephemeral public key) - typically 32 bytes for X25519
-    if (offset + 32 > encapsulatedRequest.length) {
-      throw new Error("Invalid OHTTP request: not enough data for ephemeral key");
-    }
-    
-    return encapsulatedRequest.slice(offset, offset + 32);
+    // Extract enc (ephemeral public key) - 32 bytes for X25519
+    return encapsulatedRequest.slice(headerSize, headerSize + 32);
     
   } catch (error) {
     // Fallback: generate deterministic ephemeral key from request hash
@@ -125,15 +117,11 @@ export async function handleGateway(
       upstreamResponse.body
     );
     
-    // Encrypt response with proper ephemeral key tracking
-    // Extract ephemeral key from the original request context
-    const ephemeralKey = extractEphemeralKey(encapsulatedRequest);
-    const encapsulatedResponse = await hpkeManager.encryptResponse(
-      bhttpResponse,
-      ephemeralKey
-    );
+    // Encrypt response using RFC 9458 Section 4.2 method
+    // The HPKE context is automatically retained from decryptRequest
+    const encapsulatedResponse = await hpkeManager.encryptResponse(bhttpResponse);
     
-    return new Response(encapsulatedResponse, {
+    return new Response(encapsulatedResponse as BodyInit, {
       status: 200,
       headers: {
         "content-type": CT_OHTTP_RES,
@@ -188,7 +176,7 @@ function createEncapsulatedErrorResponse(
     // For errors, we return the bHTTP response directly without encryption
     // In a full implementation, this would also be encrypted
     
-      return new Response(bhttpError, {
+      return new Response(bhttpError as BodyInit, {
       status: 200, // Always return 200 for OHTTP responses
       headers: {
         "content-type": CT_OHTTP_RES,

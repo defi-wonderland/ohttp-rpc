@@ -33,7 +33,7 @@ export async function forwardToUpstream(
       const response = await fetch(url, {
         method,
         headers: upstreamHeaders,
-        body: body.length > 0 ? body : undefined,
+        body: body.length > 0 ? (body as BodyInit) : undefined,
         signal: controller.signal,
         redirect: config.ALLOW_REDIRECTS ? "follow" : "manual",
       });
@@ -138,7 +138,7 @@ function extractResponseHeaders(response: Response): Record<string, string> {
     "access-control-allow-headers",
   ];
   
-  for (const [name, value] of Array.from(response.headers.entries())) {
+  for (const [name, value] of response.headers) {
     const lowerName = name.toLowerCase();
     if (allowedHeaders.includes(lowerName)) {
       headers[lowerName] = value;

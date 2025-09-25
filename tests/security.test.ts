@@ -145,8 +145,8 @@ describe("Security - Cryptographic Properties", () => {
     
     try {
       // Same seed should produce same keys
-      const keyPair1 = await hpkeEngine.deriveKeyPairFromSeed(seed);
-      const keyPair2 = await hpkeEngine.deriveKeyPairFromSeed(seed);
+      const keyPair1 = await hpkeEngine.deriveKeyPair(seed);
+      const keyPair2 = await hpkeEngine.deriveKeyPair(seed);
       
       expect(keyPair1.publicKey.kid).toEqual(keyPair2.publicKey.kid);
       
@@ -166,11 +166,11 @@ describe("Security - Cryptographic Properties", () => {
     
     try {
       // Same plaintext should produce different ciphertexts (nonce/randomness)
-      const result1 = await hpkeEngine.sealBase(keyPair.publicKey.bytes, plaintext, aad, info);
-      const result2 = await hpkeEngine.sealBase(keyPair.publicKey.bytes, plaintext, aad, info);
+      const result1 = await hpkeEngine.sealBase(keyPair.publicKey, aad, plaintext, info);
+      const result2 = await hpkeEngine.sealBase(keyPair.publicKey, aad, plaintext, info);
       
       // Ciphertexts should be different due to randomness
-      expect(result1.ciphertext).not.toEqual(result2.ciphertext);
+      expect(result1.ct).not.toEqual(result2.ct);
       expect(result1.enc).not.toEqual(result2.enc);
       
     } catch (error) {

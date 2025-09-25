@@ -7,6 +7,7 @@ export type {
   HpkeEngine,
   HpkeSealResult,
   HpkeOpenResult,
+  HpkeContext,
   HpkePublicKey,
   HpkePrivateKey,
   HpkeSuiteInfo,

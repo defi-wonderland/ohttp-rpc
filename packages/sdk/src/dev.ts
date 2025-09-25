@@ -33,7 +33,8 @@ async function basicExample() {
     console.log("✅ Chain ID:", chainId);
     
   } catch (error) {
-    console.error("❌ Request failed:", error.message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("❌ Request failed:", errorMessage);
   }
 }
 
@@ -71,7 +72,8 @@ async function providerExample() {
     console.log("✅ Chain ID via provider:", chainId);
     
   } catch (error) {
-    console.error("❌ Provider example failed:", error.message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("❌ Provider example failed:", errorMessage);
   }
 }
 
@@ -113,7 +115,8 @@ async function clientExample() {
     console.log("✅ Response:", result);
     
   } catch (error) {
-    console.error("❌ Client example failed:", error.message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("❌ Client example failed:", errorMessage);
   }
 }
 

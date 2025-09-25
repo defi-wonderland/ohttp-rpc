@@ -156,11 +156,12 @@ export class MockRpcServer {
       } catch (error) {
         // Handler threw an error
         if (typeof error === "object" && error !== null && "code" in error) {
+          const errorObj = error as { code: unknown; message?: string; data?: unknown };
           return this.createErrorResponse(
-            error.code as number,
-            error.message as string,
+            errorObj.code as number,
+            errorObj.message || "Unknown error",
             jsonRpcRequest.id,
-            error.data
+            errorObj.data
           );
         }
         
@@ -188,7 +189,7 @@ export class MockRpcServer {
       error: {
         code,
         message,
-        ...(data && { data }),
+        ...(data ? { data } : {}),
       },
     };
     

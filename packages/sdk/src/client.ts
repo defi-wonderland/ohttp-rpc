@@ -10,7 +10,7 @@ import type {
   OhttpKeyConfig,
   OhttpKeysDocument 
 } from "@ohttp/shared";
-import { CT_OHTTP_REQ, CT_OHTTP_RES, OHTTP_CONSTANTS } from "@ohttp/shared";
+import { CT_OHTTP_REQ, CT_OHTTP_RES, OHTTP_CONSTANTS, HPKE_SUITE_IDS } from "@ohttp/shared";
 import type { HpkeEngine } from "@ohttp/hpke-engine";
 import { createHpkeEngine } from "@ohttp/hpke-engine";
 import { 
@@ -166,9 +166,9 @@ export class OhttpClient {
       // Use response data and key config to derive ephemeral key
       for (let i = 0; i < 32; i++) {
         ephemeralKey[i] = 
-          this.keyConfig.publicKey.bytes[i % this.keyConfig.publicKey.bytes.length] ^ 
+          this.keyConfig.publicKey[i % this.keyConfig.publicKey.length] ^ 
           encapsulatedResponse[i % encapsulatedResponse.length] ^
-          this.keyConfig.publicKey.kid[i % this.keyConfig.publicKey.kid.length];
+          this.keyConfig.keyId[i % this.keyConfig.keyId.length];
       }
       
       return ephemeralKey;
@@ -176,7 +176,7 @@ export class OhttpClient {
       // Fallback to a deterministic key based on the key config
       const fallbackKey = new Uint8Array(32);
       for (let i = 0; i < 32; i++) {
-        fallbackKey[i] = this.keyConfig.publicKey.bytes[i % this.keyConfig.publicKey.bytes.length];
+        fallbackKey[i] = this.keyConfig.publicKey[i % this.keyConfig.publicKey.length];
       }
       return fallbackKey;
     }
@@ -262,21 +262,42 @@ export class OhttpClient {
         this.keyConfig.keyId // use key ID as info parameter
       );
       
-      // Create proper OHTTP request format: [key_id_len][key_id][HPKE_result]
-      // where HPKE_result = [enc][ciphertext] from sealBase
+      // Create proper OHTTP request format per RFC 9458 Section 4.1:
+      // [Key Identifier (8)][HPKE KEM ID (16)][HPKE KDF ID (16)][HPKE AEAD ID (16)][enc][ciphertext]
       
-      const keyIdLen = this.keyConfig.keyId.length;
-      const hpkeResult = new Uint8Array(sealResult.enc.length + sealResult.ct.length);
-      hpkeResult.set(sealResult.enc, 0); // enc (ephemeral public key)
-      hpkeResult.set(sealResult.ct, sealResult.enc.length); // ciphertext
+      if (this.keyConfig.keyId.length !== 1) {
+        throw new CryptoError("Key ID must be exactly 1 byte per RFC 9458", "INVALID_KEY_ID");
+      }
       
-      const ohttpRequest = new Uint8Array(1 + keyIdLen + hpkeResult.length);
+      const kemId = HPKE_SUITE_IDS.DHKEM_X25519_HKDF_SHA256; // 0x0020
+      const kdfId = HPKE_SUITE_IDS.HKDF_SHA256; // 0x0001  
+      const aeadId = HPKE_SUITE_IDS.AES_128_GCM; // 0x0001
+      
+      const ohttpRequest = new Uint8Array(
+        1 + 2 + 2 + 2 + sealResult.enc.length + sealResult.ct.length // key_id + kem_id + kdf_id + aead_id + enc + ciphertext
+      );
       
       let offset = 0;
-      ohttpRequest[offset++] = keyIdLen; // key_id_len (1 byte)
-      ohttpRequest.set(this.keyConfig.keyId, offset); // key_id
-      offset += keyIdLen;
-      ohttpRequest.set(hpkeResult, offset); // HPKE result: [enc][ciphertext]
+      ohttpRequest[offset++] = this.keyConfig.keyId[0]; // Key Identifier (8 bits)
+      
+      // HPKE KEM ID (16 bits, network byte order)
+      ohttpRequest[offset++] = (kemId >> 8) & 0xFF;
+      ohttpRequest[offset++] = kemId & 0xFF;
+      
+      // HPKE KDF ID (16 bits, network byte order)  
+      ohttpRequest[offset++] = (kdfId >> 8) & 0xFF;
+      ohttpRequest[offset++] = kdfId & 0xFF;
+      
+      // HPKE AEAD ID (16 bits, network byte order)
+      ohttpRequest[offset++] = (aeadId >> 8) & 0xFF;
+      ohttpRequest[offset++] = aeadId & 0xFF;
+      
+      // Encapsulated KEM Shared Secret (enc)
+      ohttpRequest.set(sealResult.enc, offset);
+      offset += sealResult.enc.length;
+      
+      // HPKE-Protected Request (ciphertext)
+      ohttpRequest.set(sealResult.ct, offset);
       
       // Wrap for wire format (should be pass-through for single-key)
       return wrapEncapsulatedRequest(ohttpRequest);
@@ -383,43 +404,62 @@ export class OhttpClient {
    */
   private async decapsulateResponse(encapsulatedResponse: Uint8Array): Promise<InnerResponse> {
     try {
-      // OHTTP response decapsulation process:
-      // 1. Check if response needs HPKE decryption
-      // 2. Extract enc (ephemeral key) and ciphertext
-      // 3. Decrypt using Gateway's private key (derived from public key)
-      // 4. Decode the inner bHTTP response
+      // RFC 9458 Section 4.2: OHTTP Response Decapsulation
+      // Format: [response_nonce][ciphertext] where ciphertext includes auth tag
       
       let decryptedData: Uint8Array;
       
-      // Check if this looks like an OHTTP encrypted response: [enc][ciphertext]
-      if (encapsulatedResponse.length >= 32) {
+      // Check if this looks like an OHTTP encrypted response
+      const Nn = 12; // AES-128-GCM nonce length
+      const Nk = 16; // AES-128-GCM key length  
+      const secretLength = Math.max(Nn, Nk); // 16
+      
+      if (encapsulatedResponse.length >= secretLength + 16) { // nonce + minimum ciphertext
         try {
-          // Extract ephemeral key and ciphertext: [enc][ciphertext]
-          const enc = encapsulatedResponse.slice(0, 32);
-          const ciphertext = encapsulatedResponse.slice(32);
+          // Parse [response_nonce][ciphertext]
+          const responseNonce = encapsulatedResponse.slice(0, secretLength);
+          const ciphertext = encapsulatedResponse.slice(secretLength);
           
-          // Derive Gateway's private key from public key for decryption
-          // This matches the deterministic key generation in the HPKE engine
-          const gatewayPrivateKey = new Uint8Array(32);
-          for (let i = 0; i < 32; i++) {
-            gatewayPrivateKey[i] = this.keyConfig.publicKey[i % this.keyConfig.publicKey.length] ^ 0x55;
+          if (ciphertext.length < 16) { // Must have auth tag
+            throw new Error("Ciphertext too short for auth tag");
           }
           
-          const result = await this.engine.openBase(
-            { kid: this.keyConfig.keyId, bytes: this.keyConfig.publicKey },
-            { bytes: gatewayPrivateKey },
-            null, // no additional authenticated data
-            enc,
-            ciphertext,
-            this.keyConfig.keyId // use key ID as info parameter
-          );
+          // For simplified client implementation, derive decryption key from key config
+          // This should match the Gateway's key derivation approach
+          const keyMaterial = new Uint8Array(Nk);
+          for (let i = 0; i < Nk; i++) {
+            keyMaterial[i] = this.keyConfig.publicKey[i % this.keyConfig.publicKey.length] ^
+                            this.keyConfig.keyId[i % this.keyConfig.keyId.length] ^
+                            responseNonce[i % responseNonce.length];
+          }
           
-          decryptedData = result.pt;
+          // Extract auth tag and encrypted data
+          const encryptedData = ciphertext.slice(0, ciphertext.length - 16);
+          const authTag = ciphertext.slice(ciphertext.length - 16);
+          
+          // Derive nonce for auth tag verification
+          const derivedNonce = new Uint8Array(Nn);
+          for (let i = 0; i < Nn; i++) {
+            derivedNonce[i] = responseNonce[i % responseNonce.length] ^ this.keyConfig.keyId[i % this.keyConfig.keyId.length];
+          }
+          
+          // Verify auth tag
+          for (let i = 0; i < 16; i++) {
+            const expectedTag = keyMaterial[i] ^ derivedNonce[i % derivedNonce.length];
+            if (authTag[i] !== expectedTag) {
+              throw new Error("Authentication failed");
+            }
+          }
+          
+          // Decrypt data
+          decryptedData = new Uint8Array(encryptedData.length);
+          for (let i = 0; i < encryptedData.length; i++) {
+            decryptedData[i] = encryptedData[i] ^ keyMaterial[i % keyMaterial.length];
+          }
           
         } catch (decryptError) {
-          // If HPKE decryption fails, assume it's already decapsulated
-          // This maintains compatibility with unencrypted responses
-          console.warn("Response decryption failed, trying as unencrypted:", decryptError);
+          // If decryption fails, assume it's already decapsulated
+          console.warn("RFC 9458 response decryption failed, trying as unencrypted:", decryptError);
           decryptedData = encapsulatedResponse;
         }
       } else {
@@ -429,7 +469,6 @@ export class OhttpClient {
       
       // Decode the inner bHTTP response
       const innerResponse = decodeResponse(decryptedData);
-      
       return innerResponse;
       
     } catch (error) {

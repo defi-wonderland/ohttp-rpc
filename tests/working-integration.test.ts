@@ -126,9 +126,9 @@ test("HPKE Integration - Key Generation and Encryption Flow", async () => {
   
   try {
     const encryptResult = await hpkeEngine.sealBase(
-      gatewayKeys.publicKey.bytes,
-      plaintext,
+      gatewayKeys.publicKey,
       aad,
+      plaintext,
       info
     );
     

@@ -21,7 +21,7 @@ test("HPKE key generation", async () => {
   const keyPair = await engine.generateKeyPair();
   
   expect(keyPair.publicKey.kid).toBeInstanceOf(Uint8Array);
-  expect(keyPair.publicKey.kid.length).toBe(8);
+  expect(keyPair.publicKey.kid.length).toBe(1); // RFC 9458: Key Identifier is 8 bits (1 byte)
   expect(keyPair.publicKey.bytes).toBeInstanceOf(Uint8Array);
   expect(keyPair.publicKey.bytes.length).toBeGreaterThan(0);
   
@@ -35,7 +35,7 @@ test("HPKE key derivation from seed", async () => {
   
   const keyPair = await engine.deriveKeyPair(seed);
   
-  expect(keyPair.publicKey.kid).toEqual(seed.slice(0, 8));
+  expect(keyPair.publicKey.kid).toEqual(seed.slice(0, 1)); // RFC 9458: Key Identifier is 8 bits (1 byte)
   expect(keyPair.publicKey.bytes).toBeInstanceOf(Uint8Array);
   expect(keyPair.privateKey.bytes).toBeInstanceOf(Uint8Array);
   

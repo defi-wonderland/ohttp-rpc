@@ -184,8 +184,8 @@ describe("Gateway Server - HPKE Key Management", () => {
     const seed = new Uint8Array(32).fill(42); // Deterministic seed
     
     try {
-      const keyPair1 = await hpkeEngine.deriveKeyPairFromSeed(seed);
-      const keyPair2 = await hpkeEngine.deriveKeyPairFromSeed(seed);
+      const keyPair1 = await hpkeEngine.deriveKeyPair(seed);
+      const keyPair2 = await hpkeEngine.deriveKeyPair(seed);
       
       // Same seed should produce same keys
       expect(keyPair1.publicKey.kid).toEqual(keyPair2.publicKey.kid);
