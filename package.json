@@ -31,16 +31,17 @@
   },
   "homepage": "https://github.com/your-org/ohttp-rpc#readme",
   "scripts": {
-    "build": "bun run build-working.ts",
-    "build:working": "bun run build-working.ts",
+    "build": "bunx tsc --noEmit",
     "dev:relay": "bun --hot apps/relay/src/index.ts",
-    "dev:gateway": "bun --hot apps/gateway/src/index.ts",
+    "dev:gateway": "bun --hot apps/gateway/src/index.ts", 
     "dev:sdk": "bun --hot packages/sdk/src/dev.ts",
-    "test": "bun test tests/bhttp.test.ts tests/hpke.test.ts tests/mock-rpc-direct.test.ts tests/sdk-direct.test.ts",
+    "test": "bun test tests/bhttp.test.ts tests/hpke.test.ts tests/mock-rpc-direct.test.ts tests/sdk-direct.test.ts tests/working-integration.test.ts tests/relay-server.test.ts tests/gateway-server.test.ts tests/eip1193-provider.test.ts tests/sdk-fetch-wrapper.test.ts tests/security.test.ts",
+    "test:e2e": "bun test tests/e2e-integration.test.ts --timeout 30000",
+    "test:performance": "bun test tests/performance.test.ts --timeout 30000",
     "test:all": "bun test",
     "lint": "bunx eslint .",
-    "typecheck": "bunx tsc --noEmit packages/*/src/index.ts",
-    "e2e": "bun test tests/**/*.test.ts"
+    "typecheck": "bunx tsc --noEmit",
+    "clean": "find . -name '*.tsbuildinfo' -delete && find . -name 'node_modules' -type d -prune -exec rm -rf {} +"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.14.0",

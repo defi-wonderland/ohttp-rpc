@@ -11,6 +11,49 @@ export function isTargetAllowed(url: string, config: GatewayConfig): boolean {
   try {
     const targetUrl = new URL(url);
     
+    // Security: Block dangerous protocols
+    const allowedProtocols = ["http:", "https:"];
+    if (!allowedProtocols.includes(targetUrl.protocol)) {
+      return false;
+    }
+    
+    // Security: Block path traversal attempts and sensitive paths
+    const normalizedPath = targetUrl.pathname.replace(/\/+/g, "/"); // Normalize multiple slashes
+    
+    // Decode URL-encoded characters to catch encoded path traversal
+    let decodedPath;
+    try {
+      decodedPath = decodeURIComponent(normalizedPath);
+    } catch {
+      // Invalid encoding, reject
+      return false;
+    }
+    
+    // Check for path traversal in both encoded and decoded forms
+    const pathsToCheck = [normalizedPath, decodedPath];
+    for (const path of pathsToCheck) {
+      if (path.includes("/../") || path.includes("..\\") || 
+          path.endsWith("/..") || path === ".." ||
+          path.includes("%2e%2e") || path.includes("%2E%2E")) {
+        return false;
+      }
+    }
+    
+    // Security: Block access to sensitive system paths (even on allowed origins)
+    const sensitivePaths = ["/etc/", "/proc/", "/sys/", "/dev/", "/var/", "/root/", "/home/", "/usr/bin/", "/bin/"];
+    for (const path of pathsToCheck) {
+      const lowerPath = path.toLowerCase();
+      if (sensitivePaths.some(sensitivePrefix => lowerPath.startsWith(sensitivePrefix))) {
+        return false;
+      }
+    }
+    
+    // Security: Block suspicious domains (subdomain confusion attacks)
+    const hostname = targetUrl.hostname.toLowerCase();
+    if (hostname.includes("@") || hostname.includes(" ")) {
+      return false;
+    }
+    
     // Enforce HTTPS requirement
     if (config.REQUIRE_TLS_UPSTREAM && targetUrl.protocol !== "https:") {
       return false;

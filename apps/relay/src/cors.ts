@@ -5,9 +5,9 @@
 import type { RelayConfig } from "./env.js";
 
 /**
- * Check if origin is allowed
+ * Check if origin is allowed (internal helper)
  */
-export function isOriginAllowed(origin: string | null, allowedOrigins: string[]): boolean {
+function isOriginAllowedInternal(origin: string | null, allowedOrigins: string[]): boolean {
   if (!origin) {
     return false;
   }
@@ -18,6 +18,18 @@ export function isOriginAllowed(origin: string | null, allowedOrigins: string[])
   }
   
   return allowedOrigins.includes(origin);
+}
+
+/**
+ * Check if origin is allowed (public API with config)
+ */
+export function isOriginAllowed(origin: string | null, configOrOrigins: RelayConfig | string[]): boolean {
+  // Handle both config object and array of origins for backward compatibility
+  const allowedOrigins = Array.isArray(configOrOrigins) 
+    ? configOrOrigins 
+    : configOrOrigins.ALLOWED_ORIGINS;
+  
+  return isOriginAllowedInternal(origin, allowedOrigins);
 }
 
 /**
@@ -33,7 +45,7 @@ export function createCorsHeaders(
     "Access-Control-Max-Age": "86400", // 24 hours
   };
   
-  if (origin && isOriginAllowed(origin, config.ALLOWED_ORIGINS)) {
+  if (origin && isOriginAllowed(origin, config)) {
     headers["Access-Control-Allow-Origin"] = origin;
     headers["Vary"] = "Origin";
   }
@@ -67,7 +79,7 @@ export function addCorsHeaders(
   origin: string | null, 
   config: RelayConfig
 ): Response {
-  if (!isOriginAllowed(origin, config.ALLOWED_ORIGINS)) {
+  if (!isOriginAllowed(origin, config)) {
     return response;
   }
   

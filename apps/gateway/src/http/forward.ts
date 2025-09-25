@@ -33,7 +33,7 @@ export async function forwardToUpstream(
       const response = await fetch(url, {
         method,
         headers: upstreamHeaders,
-        body: body.length > 0 ? body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) : undefined,
+        body: body.length > 0 ? body : undefined,
         signal: controller.signal,
         redirect: config.ALLOW_REDIRECTS ? "follow" : "manual",
       });

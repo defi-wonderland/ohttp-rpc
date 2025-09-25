@@ -22,13 +22,4 @@ export type {
   JsonRpcTestVector,
 } from "./vectors.js";
 
-// Export E2E testing utilities
-export {
-  E2ETestHarness,
-  runSmokeTest,
-  testUtils,
-} from "./e2e.js";
-export type {
-  E2ETestEnvironment,
-  E2ETestConfig,
-} from "./e2e.js";
+// E2E testing utilities removed - use tests/e2e-integration.test.ts instead

@@ -233,8 +233,9 @@ class GatewayServer {
  */
 function createServer(config: GatewayConfig) {
   const gateway = new GatewayServer(config);
+  let server: any = null;
   
-  return {
+  const serverObject = {
     port: config.GATEWAY_PORT,
     
     async fetch(request: Request): Promise<Response> {
@@ -243,7 +244,28 @@ function createServer(config: GatewayConfig) {
     
     // Initialize the gateway
     initialize: () => gateway.initialize(),
+    
+    async start(): Promise<void> {
+      if (!server) {
+        await this.initialize();
+        server = Bun.serve({
+          port: config.GATEWAY_PORT,
+          fetch: this.fetch.bind(this),
+        });
+        console.log(`🚀 Gateway server running on port ${config.GATEWAY_PORT}`);
+      }
+    },
+    
+    async close(): Promise<void> {
+      if (server) {
+        server.stop();
+        server = null;
+        console.log("🛑 Gateway server stopped");
+      }
+    }
   };
+  
+  return serverObject;
 }
 
 /**
@@ -261,11 +283,10 @@ async function main() {
   console.log(`Allowed Headers: ${config.ALLOWED_HEADERS.join(", ")}`);
   console.log(`Max Inner Bytes: ${config.MAX_INNER_BYTES}`);
   
-  // Create and initialize server
+  // Create and start server
   const server = createServer(config);
-  await server.initialize();
+  await server.start();
   
-  console.log(`🚀 Gateway server running on port ${server.port}`);
   console.log(`OHTTP Keys: http://localhost:${server.port}/ohttp-keys`);
   console.log(`Health check: http://localhost:${server.port}/health`);
   

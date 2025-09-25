@@ -27,6 +27,9 @@ export interface OhttpFetchOptions extends Omit<SendViaRelayOptions, 'fetchFn'> 
   /** Padding bytes for size obfuscation */
   paddingBytes?: number;
   
+  /** Allow HTTP for inner requests (DANGEROUS: only for testing) */
+  allowHttp?: boolean;
+  
   /** Custom fetch function for underlying requests */
   fetchFn?: typeof fetch;
 }
@@ -53,6 +56,7 @@ export async function ohttpFetch(
     paddingBytes,
     signal,
     timeoutMs,
+    allowHttp,
     fetchFn,
   } = options;
   
@@ -113,6 +117,7 @@ export async function ohttpFetch(
   const innerResponse = await client.sendViaRelay(relayUrl, innerRequest, {
     signal,
     timeoutMs,
+    allowHttp,
     fetchFn,
   });
   
@@ -135,9 +140,10 @@ export async function ohttpJsonRpc(
   options: Omit<OhttpFetchOptions, 'method' | 'body' | 'headers'> & {
     headers?: Record<string, string>;
     id?: string | number;
+    allowHttp?: boolean;
   } = {}
 ): Promise<unknown> {
-  const { id = Date.now(), headers = {}, ...fetchOptions } = options;
+  const { id = Date.now(), headers = {}, allowHttp, ...fetchOptions } = options;
   
   // Build JSON-RPC request
   const jsonRpcRequest = {
@@ -163,6 +169,7 @@ export async function ohttpJsonRpc(
       method: "POST",
       headers: requestHeaders,
       body: JSON.stringify(jsonRpcRequest),
+      allowHttp,
       ...fetchOptions,
     }
   );
@@ -175,7 +182,14 @@ export async function ohttpJsonRpc(
   const jsonRpcResponse = await response.json();
   
   if (jsonRpcResponse.error) {
-    throw new Error(`JSON-RPC error: ${jsonRpcResponse.error.message}`);
+    // Create proper TargetRpcError for JSON-RPC errors
+    const { TargetRpcError } = await import("./errors.js");
+    throw new TargetRpcError(
+      `RPC error: ${jsonRpcResponse.error.message}`,
+      response.status,
+      jsonRpcResponse.error,
+      jsonRpcResponse.error.code?.toString()
+    );
   }
   
   return jsonRpcResponse.result;

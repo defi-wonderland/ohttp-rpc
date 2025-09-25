@@ -33,13 +33,17 @@ export function wrapEncapsulatedRequest(
   encData: Uint8Array,
   ctInfo?: Uint8Array
 ): EncapsulatedRequest {
-  // MVP: Simple pass-through
-  // Future: Could add framing for multi-key support
+  // OHTTP Request Format: [key_id_len][key_id][enc][ciphertext]
+  // For proper framing, we need to ensure the data includes the HPKE encapsulation
+  
   if (ctInfo && ctInfo.length > 0) {
-    // Prepend context info length + data for future extensibility
+    // Include context information for multi-key scenarios
+    // Format: [ctinfo_len][ctinfo][enc_data]
     return concatBytes(encodeLengthPrefixed(ctInfo), encData);
   }
   
+  // For single-key scenarios, ensure proper OHTTP format
+  // The encData should already contain [key_id_len][key_id][enc][ciphertext]
   return encData;
 }
 
@@ -49,19 +53,12 @@ export function wrapEncapsulatedRequest(
 export function unwrapEncapsulatedRequest(
   wrapped: EncapsulatedRequest
 ): { encData: Uint8Array; ctInfo?: Uint8Array } {
-  // MVP: Check if this looks like it has context info prefix
-  try {
-    const { data: ctInfo, consumed } = decodeLengthPrefixed(wrapped, 0);
-    if (consumed < wrapped.length) {
-      // Has context info
-      return {
-        encData: wrapped.slice(consumed),
-        ctInfo,
-      };
-    }
-  } catch {
-    // No context info, treat as raw encrypted data
-  }
+  // For single-key scenarios (which is our current implementation),
+  // the wrapped data is already in the correct OHTTP format: [key_id_len][key_id][enc][ciphertext]
+  // Just return it as-is without trying to parse context info
+  
+  // TODO: In the future, we might need to detect and handle multi-key scenarios
+  // with context info format: [ctinfo_len][ctinfo][ohttp_request]
   
   return { encData: wrapped };
 }
@@ -70,7 +67,9 @@ export function unwrapEncapsulatedRequest(
  * Wrap encapsulated response data
  */
 export function wrapEncapsulatedResponse(encData: Uint8Array): EncapsulatedResponse {
-  // MVP: Simple pass-through
+  // OHTTP Response Format: [enc][ciphertext] where enc is the ephemeral public key
+  // The encData should already be properly formatted by the HPKE encryption
+  // No additional framing needed at this level
   return encData;
 }
 

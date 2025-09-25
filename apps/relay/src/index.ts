@@ -254,8 +254,9 @@ function handleHealthCheck(): Response {
  */
 function createServer(config: RelayConfig) {
   const relay = new RelayServer(config);
+  let server: any = null;
   
-  return {
+  const serverObject = {
     port: config.RELAY_PORT,
     
     async fetch(request: Request): Promise<Response> {
@@ -269,7 +270,27 @@ function createServer(config: RelayConfig) {
       // Main relay handler
       return relay.handleRequest(request);
     },
+    
+    start(): void {
+      if (!server) {
+        server = Bun.serve({
+          port: config.RELAY_PORT,
+          fetch: this.fetch.bind(this),
+        });
+        console.log(`🚀 Relay server running on port ${config.RELAY_PORT}`);
+      }
+    },
+    
+    async close(): Promise<void> {
+      if (server) {
+        server.stop();
+        server = null;
+        console.log("🛑 Relay server stopped");
+      }
+    }
   };
+  
+  return serverObject;
 }
 
 /**
@@ -289,8 +310,8 @@ async function main() {
   
   // Start server
   const server = createServer(config);
+  server.start();
   
-  console.log(`🚀 Relay server running on port ${server.port}`);
   console.log(`Health check: http://localhost:${server.port}/health`);
   
   // Export for Bun

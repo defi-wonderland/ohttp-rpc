@@ -3,7 +3,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6+-blue.svg)](https://www.typescriptlang.org/)
 [![Bun](https://img.shields.io/badge/Bun-1.2+-orange.svg)](https://bun.sh/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](#license)
-[![Tests](https://img.shields.io/badge/Tests-16%2F16-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/Tests-22%2F22-brightgreen.svg)](#testing)
 [![RFC 9458](https://img.shields.io/badge/RFC-9458-purple.svg)](https://datatracker.ietf.org/doc/rfc9458/)
 
 A comprehensive TypeScript implementation of **Oblivious HTTP (OHTTP)** for anonymizing blockchain RPC requests, enabling privacy-preserving interactions with Ethereum and other blockchain networks.

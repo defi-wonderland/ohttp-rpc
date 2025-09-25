@@ -19,8 +19,11 @@ import { TargetRpcError, ConfigError } from "./errors.js";
  * Provider configuration options
  */
 export interface OhttpRpcProviderOptions {
-  /** Gateway key configuration (URL or bytes) */
-  gatewayKeyConfig: string | Uint8Array;
+  /** Gateway key configuration (bytes) */
+  gatewayKeyConfig?: Uint8Array;
+  
+  /** Gateway key configuration URL (alternative to gatewayKeyConfig) */
+  gatewayKeyConfigUrl?: string;
   
   /** Relay server URL */
   relayUrl: string;
@@ -60,8 +63,8 @@ export class OhttpRpcProvider {
   
   constructor(private readonly options: OhttpRpcProviderOptions) {
     // Validate configuration
-    if (!options.gatewayKeyConfig) {
-      throw new ConfigError("Gateway key configuration is required");
+    if (!options.gatewayKeyConfig && !options.gatewayKeyConfigUrl) {
+      throw new ConfigError("Gateway key configuration or URL is required");
     }
     if (!options.relayUrl) {
       throw new ConfigError("Relay URL is required");
@@ -79,11 +82,11 @@ export class OhttpRpcProvider {
    */
   private async initializeClient(): Promise<void> {
     try {
-      const { gatewayKeyConfig, engine = createHpkeEngine() } = this.options;
+      const { gatewayKeyConfig, gatewayKeyConfigUrl, engine = createHpkeEngine() } = this.options;
       
-      this.client = typeof gatewayKeyConfig === "string"
-        ? await OhttpClient.fromKeyConfigUrl(gatewayKeyConfig, { engine })
-        : await OhttpClient.fromKeyConfigBytes(gatewayKeyConfig, engine);
+      this.client = gatewayKeyConfigUrl
+        ? await OhttpClient.fromKeyConfigUrl(gatewayKeyConfigUrl, { engine })
+        : await OhttpClient.fromKeyConfigBytes(gatewayKeyConfig!, engine);
         
       // Emit connect event
       this.emit("connect", { chainId: null });
@@ -126,8 +129,9 @@ export class OhttpRpcProvider {
       }
       
       // Make JSON-RPC request via OHTTP
+      const keyConfig = this.options.gatewayKeyConfigUrl || this.options.gatewayKeyConfig!;
       const result = await ohttpJsonRpc(
-        this.options.gatewayKeyConfig,
+        keyConfig,
         this.options.relayUrl,
         this.options.targetRpcUrl,
         method,
@@ -180,9 +184,17 @@ export class OhttpRpcProvider {
   }
   
   /**
-   * Emit events to listeners
+   * Get listener count for an event (EIP-1193 compatibility)
    */
-  private emit(event: ProviderEvent, data?: unknown): void {
+  listenerCount(event: ProviderEvent): number {
+    const listeners = this.eventListeners.get(event);
+    return listeners ? listeners.size : 0;
+  }
+  
+  /**
+   * Emit events to listeners (public method for testing)
+   */
+  emit(event: ProviderEvent, data?: unknown): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
       listeners.forEach(listener => {
@@ -194,6 +206,7 @@ export class OhttpRpcProvider {
       });
     }
   }
+  
   
   /**
    * Check if provider is connected
