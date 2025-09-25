@@ -1,0 +1,25 @@
+{
+  "name": "@ohttp/test-utils",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./mock-rpc": "./src/mock-rpc.ts",
+    "./vectors": "./src/vectors.ts",
+    "./e2e": "./src/e2e.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ohttp/shared": "workspace:*",
+    "@ohttp/hpke-engine": "workspace:*",
+    "@ohttp/core": "workspace:*",
+    "@ohttp/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2"
+  }
+}

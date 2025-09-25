@@ -1,0 +1,54 @@
+{
+  "name": "ohttp-rpc",
+  "version": "1.0.0",
+  "description": "TypeScript implementation of Oblivious HTTP (OHTTP) for anonymizing blockchain RPC requests",
+  "type": "module",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "keywords": [
+    "ohttp",
+    "oblivious-http",
+    "privacy",
+    "blockchain",
+    "ethereum",
+    "rpc",
+    "anonymization",
+    "hpke",
+    "bhttp",
+    "typescript"
+  ],
+  "author": "OHTTP-RPC Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/ohttp-rpc.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/ohttp-rpc/issues"
+  },
+  "homepage": "https://github.com/your-org/ohttp-rpc#readme",
+  "scripts": {
+    "build": "bun run build-working.ts",
+    "build:working": "bun run build-working.ts",
+    "dev:relay": "bun --hot apps/relay/src/index.ts",
+    "dev:gateway": "bun --hot apps/gateway/src/index.ts",
+    "dev:sdk": "bun --hot packages/sdk/src/dev.ts",
+    "test": "bun test tests/bhttp.test.ts tests/hpke.test.ts tests/mock-rpc-direct.test.ts tests/sdk-direct.test.ts",
+    "test:all": "bun test",
+    "lint": "bunx eslint .",
+    "typecheck": "bunx tsc --noEmit packages/*/src/index.ts",
+    "e2e": "bun test tests/**/*.test.ts"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.14.0",
+    "@typescript-eslint/parser": "^8.14.0",
+    "bun-types": "^1.1.38",
+    "eslint": "^9.15.0",
+    "typescript": "^5.6.2",
+    "typescript-eslint": "^8.44.1",
+    "zod": "^3.23.8"
+  }
+}

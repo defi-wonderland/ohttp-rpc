@@ -1,0 +1,6 @@
+[install]
+production = false
+
+[run]
+# Allow network for servers and tests
+bun = true

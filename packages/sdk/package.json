@@ -1,0 +1,36 @@
+{
+  "name": "@ohttp/sdk",
+  "version": "1.0.0",
+  "description": "Client SDK for OHTTP protocol with blockchain RPC support",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./fetch": "./src/fetch.ts",
+    "./provider": "./src/provider.ts",
+    "./keys": "./src/keys.ts",
+    "./errors": "./src/errors.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "dev": "bun --hot src/dev.ts"
+  },
+  "dependencies": {
+    "@ohttp/shared": "workspace:*",
+    "@ohttp/hpke-engine": "workspace:*",
+    "@ohttp/core": "workspace:*"
+  },
+  "keywords": ["ohttp", "sdk", "client", "blockchain", "rpc", "privacy", "typescript"],
+  "author": "OHTTP-RPC Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/ohttp-rpc.git",
+    "directory": "packages/sdk"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2"
+  }
+}

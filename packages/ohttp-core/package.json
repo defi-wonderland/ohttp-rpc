@@ -1,0 +1,32 @@
+{
+  "name": "@ohttp/core",
+  "version": "1.0.0",
+  "description": "Core OHTTP and bHTTP protocol implementation",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./bhttp": "./src/bhttp.ts",
+    "./ohttp": "./src/ohttp.ts",
+    "./media": "./src/media.ts",
+    "./bytes": "./src/bytes.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ohttp/shared": "workspace:*"
+  },
+  "keywords": ["ohttp", "bhttp", "binary-http", "protocol", "typescript"],
+  "author": "OHTTP-RPC Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/ohttp-rpc.git",
+    "directory": "packages/ohttp-core"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2"
+  }
+}
