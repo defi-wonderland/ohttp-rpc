@@ -313,22 +313,61 @@ graph LR
     style C fill:#e3f2fd
 ```
 
-### Client SDK
+### Viem Integration (Recommended)
+
+Drop-in replacement for `http()` transport:
+
+```typescript
+import { createPublicClient } from 'viem'
+import { mainnet } from 'viem/chains'
+import { ohttp } from '@ohttp/sdk/viem'
+
+const client = createPublicClient({
+  chain: mainnet,
+  transport: ohttp('https://mainnet.infura.io/v3/YOUR_KEY')
+})
+
+// Use normally - full type safety and privacy!
+const balance = await client.getBalance({ address: '0x...' })
+```
+
+### Wagmi Integration
+
+Same pattern for React apps:
+
+```typescript
+import { createConfig } from 'wagmi'
+import { mainnet } from 'wagmi/chains'
+import { ohttp } from '@ohttp/sdk/wagmi'
+
+export const config = createConfig({
+  chains: [mainnet],
+  transports: {
+    [mainnet.id]: ohttp('https://mainnet.infura.io/v3/YOUR_KEY')
+  }
+})
+
+// All existing hooks work the same!
+function MyComponent() {
+  const { data: balance } = useBalance({ address: '0x...' })
+  return <div>Balance: {balance?.formatted}</div>
+}
+```
+
+### EIP-1193 Provider
 
 ```typescript
 import { OhttpRpcProvider } from "@ohttp/sdk";
 
 // Create OHTTP-enabled RPC provider
 const provider = new OhttpRpcProvider({
-  gatewayKeyConfig: "https://gateway.example.com/ohttp-keys",
+  gatewayKeyConfigUrl: "https://gateway.example.com/ohttp-keys",
   relayUrl: "https://relay.example.com/relay",
   targetRpcUrl: "https://mainnet.infura.io/v3/YOUR_PROJECT_ID",
-  paddingBytes: 64, // Optional padding for size obfuscation
 });
 
 // Use like any EIP-1193 provider
 const chainId = await provider.request({ method: "eth_chainId" });
-const balance = await provider.getBalance("0x742d35Cc6634C0532925a3b8D3Ac6bC6Bf2f5C6");
 ```
 
 ### Direct OHTTP Fetch

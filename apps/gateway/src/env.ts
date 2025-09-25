@@ -85,7 +85,7 @@ const envSchema = z.object({
   // HPKE configuration
   HPKE_SEED: z.string()
     .min(1, "HPKE_SEED is required")
-    .transform(validateHpkeSeed),
+    .transform(validateHpkeSeed) as z.ZodType<Uint8Array>,
   HPKE_SUITE: z.string().default("DHKEM_X25519_HKDF_SHA256+HKDF_SHA256+AES_128_GCM"),
   
   // Policy configuration
@@ -187,7 +187,8 @@ function validateProductionConfig(config: GatewayConfig): void {
   const errors: string[] = [];
   
   // Check for development values in production
-  if (config.HPKE_SEED.includes('dev') || config.HPKE_SEED.length < 40) {
+  const seedString = String(config.HPKE_SEED);
+  if (seedString.includes('dev') || config.HPKE_SEED.length < 32) {
     errors.push("HPKE_SEED appears to be a development value");
   }
   
@@ -237,10 +238,18 @@ function validateProductionConfig(config: GatewayConfig): void {
 /**
  * Get configuration with defaults for development
  */
-export function getDevConfig(): GatewayConfig {
+export function getDevConfig(): any {
   return {
     GATEWAY_PORT: 8788,
-    HPKE_SEED: "dev-seed-32-bytes-base64url-encoded-here", // This should be properly generated
+    HPKE_SEED: (() => {
+      const encoder = new TextEncoder();
+      const seedBytes = encoder.encode("dev-seed-32-bytes-base64url-encoded-here");
+      const result = new Uint8Array(32);
+      for (let i = 0; i < 32; i++) {
+        result[i] = seedBytes[i % seedBytes.length] || 0;
+      }
+      return result;
+    })(),
     HPKE_SUITE: "DHKEM_X25519_HKDF_SHA256+HKDF_SHA256+AES_128_GCM",
     ALLOWED_TARGETS: [
       "https://mainnet.infura.io",
@@ -261,23 +270,3 @@ export function getDevConfig(): GatewayConfig {
   };
 }
 
-/**
- * Validate HPKE seed format
- */
-export function validateHpkeSeed(seed: string): Uint8Array {
-  try {
-    // For development, create a deterministic seed from the string
-    const encoder = new TextEncoder();
-    const seedBytes = encoder.encode(seed);
-    
-    // Pad or truncate to 32 bytes
-    const result = new Uint8Array(32);
-    for (let i = 0; i < 32; i++) {
-      result[i] = seedBytes[i % seedBytes.length] || 0;
-    }
-    
-    return result;
-  } catch (error) {
-    throw new Error(`Invalid HPKE seed format: ${error}`);
-  }
-}

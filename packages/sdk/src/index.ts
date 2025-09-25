@@ -60,3 +60,9 @@ export {
   createErrorFromResponse,
   isRetryableError,
 } from "./errors.js";
+
+// Export Viem integration (separate import path for tree-shaking)
+// import { ohttp } from "@ohttp/sdk/viem";
+
+// Export Wagmi integration (separate import path for tree-shaking)  
+// import { ohttp } from "@ohttp/sdk/wagmi";
