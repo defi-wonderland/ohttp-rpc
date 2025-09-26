@@ -13,9 +13,10 @@
     "setup": "bun scripts/setup.ts"
   },
   "dependencies": {
-    "@ohttp/shared": "workspace:*",
-    "@ohttp/hpke-engine": "workspace:*",
+    "@noble/hashes": "^2.0.1",
     "@ohttp/core": "workspace:*",
+    "@ohttp/hpke-engine": "workspace:*",
+    "@ohttp/shared": "workspace:*",
     "zod": "^3.23.8"
   },
   "devDependencies": {

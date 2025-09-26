@@ -39,9 +39,9 @@ test("HPKE key derivation from seed", async () => {
   expect(keyPair.publicKey.bytes).toBeInstanceOf(Uint8Array);
   expect(keyPair.privateKey.bytes).toBeInstanceOf(Uint8Array);
   
-  // Verify key sizes are correct for X25519
+  // Verify key sizes are correct for X25519 (RFC 9180)
   expect(keyPair.publicKey.bytes.length).toBe(32);
-  expect(keyPair.privateKey.bytes.length).toBeGreaterThan(32); // PKCS#8 format is longer
+  expect(keyPair.privateKey.bytes.length).toBe(32); // Raw X25519 private key scalar
   
   // Note: Due to WebCrypto limitations, deterministic key generation from the same seed
   // is not guaranteed in this implementation. For production use, a proper cryptographic

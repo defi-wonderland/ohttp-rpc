@@ -2,6 +2,9 @@
  * Memory zeroization utilities for sensitive data
  */
 
+import { hkdf } from '@noble/hashes/hkdf.js';
+import { sha256 } from '@noble/hashes/sha2.js';
+
 /**
  * Securely zeroize a Uint8Array
  */
@@ -111,58 +114,24 @@ export async function withZeroizing<T>(
 }
 
 /**
- * Derive key material with automatic zeroization
+ * Derive key material using RFC 5869 compliant HKDF
+ * 
+ * SECURITY FIX: Replaced dangerous custom "simplified HKDF-like" implementation
+ * with proper RFC 5869 HKDF from @noble/hashes for cryptographic security.
  */
 export function deriveKeyMaterial(
   seed: Uint8Array,
   info: string,
   length: number
 ): Uint8Array {
-  // Production-ready key derivation using HMAC-based approach
-  // This implements a simplified HKDF-like function
-  
   const infoBytes = new TextEncoder().encode(info);
-  const derived = new Uint8Array(length);
   
-  // HKDF-like expansion using HMAC-SHA256 concept
-  // Step 1: Extract - use seed as key material
-  const prk = new Uint8Array(32); // Pseudo-random key
-  for (let i = 0; i < 32; i++) {
-    prk[i] = seed[i % seed.length] ^ 0x36; // HMAC-like ipad
-  }
+  // Use RFC 5869 compliant HKDF with SHA-256
+  // HKDF(IKM=seed, salt="", info=infoBytes, L=length)
+  const salt = new Uint8Array(0); // Empty salt as per common practice
   
-  // Step 2: Expand - derive output key material
-  let counter = 1;
-  let offset = 0;
-  
-  while (offset < length) {
-    // Create HMAC-like hash for this round
-    const roundInput = new Uint8Array(infoBytes.length + 1);
-    roundInput.set(infoBytes, 0);
-    roundInput[infoBytes.length] = counter;
-    
-    // Simplified HMAC-SHA256-like operation
-    const roundKey = new Uint8Array(32);
-    for (let i = 0; i < 32; i++) {
-      roundKey[i] = prk[i];
-      for (let j = 0; j < roundInput.length; j++) {
-        roundKey[i] ^= roundInput[j] * (i + 1) * (j + 1);
-      }
-      // Add some non-linearity
-      roundKey[i] = ((roundKey[i] << 3) ^ (roundKey[i] >> 5)) & 0xFF;
-    }
-    
-    // Copy to output
-    const copyLen = Math.min(32, length - offset);
-    for (let i = 0; i < copyLen; i++) {
-      derived[offset + i] = roundKey[i];
-    }
-    
-    offset += copyLen;
-    counter++;
-  }
-  
-  return derived;
+  const actualSalt = salt.length > 0 ? salt : undefined; // Use undefined for empty salt
+  return hkdf(sha256, seed, actualSalt, infoBytes, length);
 }
 
 /**

@@ -18,6 +18,8 @@ import type {
 } from "./interface.js";
 import { HpkeCryptoError } from "./interface.js";
 import { x25519 } from "@noble/curves/ed25519.js";
+import { extract as hkdfExtract, expand as hkdfExpand } from '@noble/hashes/hkdf.js';
+import { sha256 } from '@noble/hashes/sha2.js';
 
 /**
  * RFC 9180 compliant HPKE Context implementation
@@ -416,58 +418,19 @@ export class WebCryptoHpkeEngine implements HpkeEngine {
   }
 
   /**
-   * HKDF-Extract (RFC 5869)
+   * HKDF-Extract (RFC 5869) using @noble/hashes
    */
   async hkdfExtract(salt: Uint8Array, ikm: Uint8Array): Promise<Uint8Array> {
-    const key = await crypto.subtle.importKey(
-      "raw",
-      (salt.length > 0 ? salt : new Uint8Array(32)) as BufferSource, // Use zero salt if empty
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"]
-    );
-
-    const signature = await crypto.subtle.sign("HMAC", key, ikm as BufferSource);
-    return new Uint8Array(signature);
+    // Use noble/hashes for RFC 5869 compliant HKDF-Extract
+    const actualSalt = salt.length > 0 ? salt : undefined; // Use undefined for empty salt per noble API
+    return hkdfExtract(sha256, ikm, actualSalt);
   }
 
   /**
-   * HKDF-Expand (RFC 5869)
+   * HKDF-Expand (RFC 5869) using @noble/hashes
    */
   async hkdfExpand(prk: Uint8Array, info: Uint8Array, length: number): Promise<Uint8Array> {
-    const hashLen = 32; // SHA-256 output length
-    const n = Math.ceil(length / hashLen);
-    
-    if (n >= 255) {
-      throw new Error("HKDF-Expand: length too large");
-    }
-    
-    const key = await crypto.subtle.importKey(
-      "raw",
-      prk as BufferSource,
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"]
-    );
-    
-    const okm = new Uint8Array(length);
-    let t = new Uint8Array(0);
-    let offset = 0;
-    
-    for (let i = 1; i <= n; i++) {
-      const input = new Uint8Array(t.length + info.length + 1);
-      input.set(t, 0);
-      input.set(info, t.length);
-      input[input.length - 1] = i;
-      
-      const signature = await crypto.subtle.sign("HMAC", key, input);
-      t = new Uint8Array(signature);
-      
-      const copyLen = Math.min(hashLen, length - offset);
-      okm.set(t.slice(0, copyLen), offset);
-      offset += copyLen;
-    }
-    
-    return okm;
+    // Use noble/hashes for RFC 5869 compliant HKDF-Expand
+    return hkdfExpand(sha256, prk, info, length);
   }
 }
