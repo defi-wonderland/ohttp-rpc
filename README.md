@@ -322,9 +322,22 @@ import { createPublicClient } from 'viem'
 import { mainnet } from 'viem/chains'
 import { ohttp } from '@ohttp/sdk/viem'
 
+// ⚠️ Note: Default gateway/relay URLs are placeholders - you MUST provide your own
+// Simple usage (requires your own OHTTP infrastructure)
 const client = createPublicClient({
   chain: mainnet,
   transport: ohttp('https://mainnet.infura.io/v3/YOUR_KEY')
+})
+
+// Production usage with your own OHTTP infrastructure
+const productionClient = createPublicClient({
+  chain: mainnet,
+  transport: ohttp('https://mainnet.infura.io/v3/YOUR_KEY', {
+    gateway: 'https://your-gateway.com',  // Your OHTTP gateway
+    relay: 'https://your-relay.com',      // Your OHTTP relay
+    timeout: 10000,                       // Request timeout (default: 10000ms)
+    padding: 64                           // Request padding (default: 64 bytes)
+  })
 })
 
 // Use normally - full type safety and privacy!
@@ -340,10 +353,25 @@ import { createConfig } from 'wagmi'
 import { mainnet } from 'wagmi/chains'
 import { ohttp } from '@ohttp/sdk/wagmi'
 
+// ⚠️ Note: You must provide gateway and relay URLs - defaults are placeholders
+// Simple usage (requires your own OHTTP infrastructure)
 export const config = createConfig({
   chains: [mainnet],
   transports: {
     [mainnet.id]: ohttp('https://mainnet.infura.io/v3/YOUR_KEY')
+  }
+})
+
+// Production usage with your own infrastructure
+export const productionConfig = createConfig({
+  chains: [mainnet],
+  transports: {
+    [mainnet.id]: ohttp('https://mainnet.infura.io/v3/YOUR_KEY', {
+      gateway: 'https://your-gateway.com',
+      relay: 'https://your-relay.com',
+      timeout: 10000,
+      padding: 64
+    })
   }
 })
 

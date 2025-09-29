@@ -23,7 +23,10 @@ import { ohttp } from '@ohttp/sdk/viem'
 
 const client = createPublicClient({
   chain: mainnet,
-  transport: ohttp('https://mainnet.infura.io/v3/YOUR_KEY')
+  transport: ohttp('https://mainnet.infura.io/v3/YOUR_KEY', {
+    gateway: 'https://your-gateway.com',
+    relay: 'https://your-relay.com'
+  })
 })
 
 // Use exactly the same - full type safety!
@@ -57,7 +60,10 @@ import { ohttp } from '@ohttp/sdk/wagmi'
 export const config = createConfig({
   chains: [mainnet],
   transports: {
-    [mainnet.id]: ohttp('https://mainnet.infura.io/v3/YOUR_KEY')
+    [mainnet.id]: ohttp('https://mainnet.infura.io/v3/YOUR_KEY', {
+      gateway: 'https://your-gateway.com',
+      relay: 'https://your-relay.com'
+    })
   }
 })
 
@@ -86,6 +92,11 @@ const transports = ohttpMultichain({
   [mainnet.id]: 'https://mainnet.infura.io/v3/YOUR_KEY',
   [polygon.id]: 'https://polygon-rpc.com',
   [arbitrum.id]: 'https://arb1.arbitrum.io/rpc'
+}, {
+  gateway: 'https://your-gateway.com',
+  relay: 'https://your-relay.com',
+  timeout: 10000,
+  padding: 64
 })
 
 // Create clients for each chain
@@ -114,6 +125,12 @@ export const config = createConfig({
       [mainnet.id]: 'https://mainnet.infura.io/v3/YOUR_KEY',
       [polygon.id]: 'https://polygon-rpc.com',
       [arbitrum.id]: 'https://arb1.arbitrum.io/rpc'
+    },
+    ohttpOptions: {
+      gateway: 'https://your-gateway.com',
+      relay: 'https://your-relay.com',
+      timeout: 10000,
+      padding: 64
     }
   })
 })
@@ -173,9 +190,10 @@ When you use OHTTP transport:
 ## ⚠️ Important Notes
 
 - This is experimental software - audit before production use
-- Default gateway/relay are for testing - use your own for production
+- **Default gateway/relay URLs are placeholders (example.com) - you MUST deploy your own infrastructure**
 - OHTTP requires both gateway and relay servers to be running
 - See deployment docs for setting up your own infrastructure
+- The `ohttp()` function will fail if you don't provide valid gateway and relay URLs
 
 ## 🛠️ Advanced Usage
 
